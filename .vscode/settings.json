@@ -1,0 +1,19 @@
+{
+    "files.associations": {
+        "cl_hal_driver.h": "c",
+        "stdio.h": "c",
+        "pipe.h": "c",
+        "control_cl_module.h": "c",
+        "time.h": "c",
+        "error_codes.h": "c",
+        "unistd.h": "c",
+        "pid_core.h": "c",
+        "pthread.h": "c",
+        "stat.h": "c",
+        "control_xmt_module.h": "c",
+        "xmt_hal_driver.h": "c",
+        "fcntl.h": "c",
+        "stdlib.h": "c",
+        "motor.h": "c"
+    }
+}
