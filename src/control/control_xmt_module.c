@@ -166,7 +166,7 @@ FILE* createSaveFile()
         printf("无法创建文件\n");
         return NULL;
     }
-    fprintf(fp, "count,CL_origin,CL_filter,xmt_control,zero\n");
+    fprintf(fp, "count,CL_filter,xmt_control,zero\n");
 
 
     return fp;
@@ -205,20 +205,38 @@ void *xmtReceiveInputThread(void *arg)
         pthread_mutex_unlock(&control_cl_module_infoSt->mutex);
 
         before_filter = firFilterProcess(before_filter);
-        pthread_mutex_lock(&info->mutex);
-        PIDresult = -PID_Compute(&pipeShareDataSt->pid, info->foundation_zero / info->hangLenth / info->amplify, before_filter / info->hangLenth / info->amplify, info->dt);
-        printf("PID_Compute = %f\n", PIDresult);
-        pthread_mutex_unlock(&info->mutex);
-        PIDresult += info->xmt_zero;
-        info->xmt_zero = PIDresult;
         
-        printf("PIDresult = %f\n", PIDresult);
+        if(before_filter > info->foundation_zero+0.002 || before_filter < info->foundation_zero-0.002)
+        {
+            pthread_mutex_lock(&info->mutex);
+            PIDresult = PID_Compute(&pipeShareDataSt->pid, info->foundation_zero / info->hangLenth / info->amplify, before_filter / info->hangLenth / info->amplify, info->dt);
+            printf("PID_Compute = %f\n", PIDresult);
+            pthread_mutex_unlock(&info->mutex);
+            PIDresult += info->xmt_zero;
 
-        xmt_numtodata(xmt_data_ins, 0, 0, PIDresult);
-        res = xmt_datainlist(xmt_data_ins, buf);
-        write(info->fd, buf, res);
+            if(PIDresult < 0)
+            {
+                PIDresult = 0;
+            }else if(PIDresult > 0.35)
+            {
+                PIDresult = 0.35;
+            }
 
-         fprintf(fp, "%d,%lf,%lf,%lf,%lf\n", count, before_filter, info->xmt_zero, ( info->foundation_zero)/ info->hangLenth / info->amplify);
+            info->xmt_zero = PIDresult;
+        
+            printf("PIDresult = %f\n", PIDresult);
+
+            xmt_numtodata(xmt_data_ins, 0, 0, PIDresult);
+            res = xmt_datainlist(xmt_data_ins, buf);
+            write(info->fd, buf, res);
+
+            fprintf(fp, "%d,%lf,%lf,%lf\n", count, before_filter, info->xmt_zero, ( info->foundation_zero)/ info->hangLenth / info->amplify);
+        }else
+        {
+            pipeShareDataSt->pid.integral = pipeShareDataSt->pid.integral / 2.0;
+        }
+        
+        
         if (count % 100000 == 0 && count != 0)
         {
             fclose(fp);

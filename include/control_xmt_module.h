@@ -29,10 +29,11 @@
 #define FILTER_ALPHA 0.01 // 定义低通滤波器参数
 #define HOUR 24*5
 #define HANG_LENTH 290.0 // 定义悬臂长度154mm
-#define AMPLIFY 0.02155  // 设定倒摆放大系数
+#define AMPLIFY 0.02112  // 设定倒摆放大系数
+
 #define QUEUE_LENTH 100
 #define QUEUE_LENTH_D 100.0
-#define DT 0.25
+#define DT SAMPLETIME*0.001
 #define TIME 3600 * (1 / DT) * HOUR
 
 extern pipeShareData *pipeShareDataSt;

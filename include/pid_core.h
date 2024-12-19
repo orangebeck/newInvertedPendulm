@@ -10,11 +10,12 @@ typedef struct PIDController {
     double Kd; // 微分增益
     double prevError; // 上一次的误差
     double integral; // 误差积分
-    double outMin; // Minimum output value
+
     double outMax; // Maximum output value
+    double integralMax;
 } PIDController;
 
-void PID_Init(PIDController* pid, double Kp, double Ki, double Kd, double outMin, double outMax);
+void PID_Init(PIDController* pid, double Kp, double Ki, double Kd, double outMax, double integralMax);
 
 double PID_Compute(PIDController* pid, double setpoint, double measuredValue, double dt);
 

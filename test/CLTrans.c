@@ -20,6 +20,23 @@ control_cl_module_info *initControlClModule()
     return info;
 }
 
+void print_log_with_timestamp(double log_message) {
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+
+    // 获取秒和微秒
+    time_t seconds = tv.tv_sec;
+    suseconds_t microseconds = tv.tv_usec;
+
+    // 转换为 tm 结构体格式
+    struct tm *tm_info = localtime(&seconds);
+
+    // 打印带时间戳的日志，格式：yyyy-mm-dd HH:MM:SS.mmm
+    char timestamp[64];
+    strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", tm_info);
+    printf("%s.%03ld %f\n", timestamp, microseconds / 1000, log_message); // 毫秒
+}
+
 int clConfigTty(int fd, struct termios *termios)
 {
     // 清空串口接收缓冲区
@@ -94,6 +111,8 @@ void CL_init(int fd)
     write(fd, buf, res);
     res = read(fd, buf, 1024);
     CL_ret_data(buf);
+
+    printf("%s end\n", __func__);
 }
 
 void timer_thread(int signo, siginfo_t *sigInfo, void *context)
@@ -112,9 +131,9 @@ void timer_thread(int signo, siginfo_t *sigInfo, void *context)
 
         pthread_mutex_lock(&info->mutex);
         info->clData = CL_decode_value(buf);
+        print_log_with_timestamp(info->clData);
         pthread_cond_signal(&info->cond);
         pthread_mutex_unlock(&info->mutex);
-        printf("%s info->clData = %f\n", __func__, info->clData);
     }else
     {
         printf("timer_thread\n");
@@ -174,9 +193,9 @@ timer_t signal_init(control_cl_module_info *info)
     return timer_id;
 }
 
-void *clReceiveInputThread(void *arg)
+int main()
 {
-    control_cl_module_info *info = (control_cl_module_info *)arg;
+    control_cl_module_info *info = (control_cl_module_info *)malloc(sizeof(control_cl_module_info));
     timer_t timeHandler;
     struct termios termios_tty;
     char *clTtyPath = "/dev/ttySTM1";
@@ -188,12 +207,10 @@ void *clReceiveInputThread(void *arg)
 
     timeHandler = signal_init(info);
 
-    pthread_mutex_lock(&pipeShareDataSt->stop_mutex);
-    pthread_cond_wait(&pipeShareDataSt->stop_cond, &pipeShareDataSt->stop_mutex);
-    pthread_mutex_unlock(&pipeShareDataSt->stop_mutex);
-    stopThread(info->fd);
+    while(1)
+    {
 
-    timer_delete(timeHandler);
-    pthread_cond_broadcast(&info->cond);
-    pthread_exit(NULL);  // 线程退出
+    }
+
+    return 0;
 }

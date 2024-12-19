@@ -6,7 +6,7 @@ SRC = $(wildcard src/**/*.c)
 OBJ = $(patsubst src/%, bin/%, $(SRC:.c=.o))
 
 all: $(TARGET)
-
+	cp ./$(TARGET) ~/workdir/
 $(TARGET): $(OBJ)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 

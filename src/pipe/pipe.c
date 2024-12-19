@@ -14,8 +14,8 @@ motor motorList[] = {
     {
         .led = 4.0,
         .motor_ctrl = {
-            .enx = 0,
-            .micro = 400,
+            .enx = 1,
+            .micro = 1600,
         },
     },
     {}
@@ -33,7 +33,7 @@ pipeShareData *initPipeShareDataSt(){
     }
     memset(data,0,sizeof(pipeShareData));
 
-    PID_Init(&data->pid, 0, 0, 0, -0.005, 0.005);
+    PID_Init(&data->pid, 0, 0, 0, 0.005, 0.1);
 
     if (pthread_mutex_init(&data->stop_mutex, NULL) != 0) {
         perror("Mutex initialization failed");
@@ -141,14 +141,17 @@ int pipeControl(char *infoList[], pipeShareData *pipeShareDataSt)
             if (strcmp(infoList[i], "z") == 0)
             {
                 control_xmt_module_infoSt->foundation_zero = atof(infoList[i + 1]);
+                printf("%s control_xmt_module_infoSt->foundation_zero = %f\n", __func__, control_xmt_module_infoSt->foundation_zero);
             }
             else if (strcmp(infoList[i], "h") == 0)
             {
                 control_xmt_module_infoSt->hangLenth = atof(infoList[i + 1]);
+                printf("%s control_xmt_module_infoSt->hangLenth = %f\n", __func__, control_xmt_module_infoSt->hangLenth);
             }
             else if (strcmp(infoList[i], "a") == 0)
             {
-                control_xmt_module_infoSt->amplify = atof(infoList[i + 1]);
+                control_xmt_module_infoSt->amplify = atof(infoList[i + 1]) / 1000.0;
+                printf("%s control_xmt_module_infoSt->amplify = %f\n", __func__, control_xmt_module_infoSt->amplify );
             }
             pthread_mutex_unlock(&control_xmt_module_infoSt->mutex);
         }
@@ -160,13 +163,13 @@ int pipeControl(char *infoList[], pipeShareData *pipeShareDataSt)
             if (strcmp(infoList[i], "U") == 0)
             {
                 motorList[atoi(infoList[i + 1])].motor_ctrl.dir = 0;
-                motorList[atoi(infoList[i + 1])].motor_ctrl.pul = (int)(atof(infoList[i + 2])/motorList[atoi(infoList[i + 1])].led);
+                motorList[atoi(infoList[i + 1])].motor_ctrl.pul = (int)(abs(atof(infoList[i + 2]))/motorList[atoi(infoList[i + 1])].led*motorList[atoi(infoList[i + 1])].motor_ctrl.micro);
                 ioctl(motor_fd, MOTOR_IOCTL_CMD_SET_VALUE, &motorList[atoi(infoList[i + 1])].motor_ctrl);
             }
             else if (strcmp(infoList[i], "D") == 0)
             {
                 motorList[atoi(infoList[i + 1])].motor_ctrl.dir = 1;
-                motorList[atoi(infoList[i + 1])].motor_ctrl.pul = (int)(atof(infoList[i + 2])/motorList[atoi(infoList[i + 1])].led);
+                motorList[atoi(infoList[i + 1])].motor_ctrl.pul = (int)(abs(atof(infoList[i + 2]))/motorList[atoi(infoList[i + 1])].led*motorList[atoi(infoList[i + 1])].motor_ctrl.micro);
                 ioctl(motor_fd, MOTOR_IOCTL_CMD_SET_VALUE, &motorList[atoi(infoList[i + 1])].motor_ctrl);
             }
         }

@@ -14,6 +14,8 @@
         "xmt_hal_driver.h": "c",
         "fcntl.h": "c",
         "stdlib.h": "c",
-        "motor.h": "c"
+        "motor.h": "c",
+        "stcontrol_xmt_module_info.h": "c",
+        "msg.h": "c"
     }
 }
