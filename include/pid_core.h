@@ -13,6 +13,8 @@ typedef struct PIDController {
 
     double outMax; // Maximum output value
     double integralMax;
+
+    double ratio;
 } PIDController;
 
 void PID_Init(PIDController* pid, double Kp, double Ki, double Kd, double outMax, double integralMax);

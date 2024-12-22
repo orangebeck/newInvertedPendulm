@@ -9,6 +9,7 @@ void PID_Init(PIDController* pid, double Kp, double Ki, double Kd, double outMax
     pid->integral = 0.0;
     pid->outMax = outMax; 
     pid->integralMax = integralMax; 
+    pid->ratio = 1;
 }
 
 double PID_Compute(PIDController *pid, double setpoint, double measuredValue, double dt)
@@ -28,7 +29,7 @@ double PID_Compute(PIDController *pid, double setpoint, double measuredValue, do
     }
     double derivative = (error - pid->prevError) / dt;
 
-    double output = pid->Kp * error + pid->Ki * integral + pid->Kd * derivative;
+    double output = pid->Kp * pid->ratio * error + pid->Ki * pid->ratio * integral + pid->Kd * pid->ratio * derivative;
 
     if (output > pid->outMax) {
         output = pid->outMax;

@@ -145,7 +145,6 @@ void get_file_name(char *buf, size_t bufSize)
     timeinfo = localtime(&rawtime);
 
     // 格式化时间。例如：2023-03-27 15:00:00
-    // Ensure the buffer is large enough to accommodate the date-time format plus the file extension.
     strftime(buf, bufSize - strlen(buffer_type), "%Y-%m-%d %H:%M:%S", timeinfo);
     printf("%s\n", buf);
 
@@ -183,19 +182,23 @@ void *xmtReceiveInputThread(void *arg)
     int res = 0;
     FILE* fp = createSaveFile();
     int count = 0;
-
     double before_filter;
+    cycleBuffer* cb = initCycleBuffer(1000);
 
-    info->fd = xmtfd_init(default_path);
-    config_tty(info->fd, &termios_tty);
+    #ifndef DEBUG_MODE
+        info->fd = xmtfd_init(default_path);
+        config_tty(info->fd, &termios_tty);
+        res = config_xmt(info->fd, buf, &xmt_data_ins);
+    #endif
 
-    res = config_xmt(info->fd, buf, &xmt_data_ins);
     if (res < 0) goto configErr;
     printf("XMT init successfully!\n");
 
-    xmt_numtodata(xmt_data_ins, 0, 0, XMT_OFFSET);
-    res = xmt_datainlist(xmt_data_ins, buf);
-    write(info->fd, buf, res);
+    #ifndef DEBUG_MODE
+        xmt_numtodata(xmt_data_ins, 0, 0, XMT_OFFSET);
+        res = xmt_datainlist(xmt_data_ins, buf);
+        write(info->fd, buf, res);
+    #endif
 
     while (info->stopThread == 0)
     {
@@ -206,36 +209,39 @@ void *xmtReceiveInputThread(void *arg)
 
         before_filter = firFilterProcess(before_filter);
         
+        pthread_mutex_lock(&info->mutex);
         if(before_filter > info->foundation_zero+0.002 || before_filter < info->foundation_zero-0.002)
         {
-            pthread_mutex_lock(&info->mutex);
+            pipeShareDataSt->pid.ratio = 1.0;
             PIDresult = PID_Compute(&pipeShareDataSt->pid, info->foundation_zero / info->hangLenth / info->amplify, before_filter / info->hangLenth / info->amplify, info->dt);
-            printf("PID_Compute = %f\n", PIDresult);
-            pthread_mutex_unlock(&info->mutex);
-            PIDresult += info->xmt_zero;
-
-            if(PIDresult < 0)
-            {
-                PIDresult = 0;
-            }else if(PIDresult > 0.35)
-            {
-                PIDresult = 0.35;
-            }
-
-            info->xmt_zero = PIDresult;
-        
-            printf("PIDresult = %f\n", PIDresult);
-
-            xmt_numtodata(xmt_data_ins, 0, 0, PIDresult);
-            res = xmt_datainlist(xmt_data_ins, buf);
-            write(info->fd, buf, res);
-
-            fprintf(fp, "%d,%lf,%lf,%lf\n", count, before_filter, info->xmt_zero, ( info->foundation_zero)/ info->hangLenth / info->amplify);
         }else
         {
             pipeShareDataSt->pid.integral = pipeShareDataSt->pid.integral / 2.0;
+            pipeShareDataSt->pid.ratio = 0.5;
+            PIDresult = PID_Compute(&pipeShareDataSt->pid, info->foundation_zero / info->hangLenth / info->amplify, before_filter / info->hangLenth / info->amplify, info->dt);
         }
-        
+        pthread_mutex_unlock(&info->mutex);
+        printf("PID_Compute = %f\n", PIDresult);
+
+        PIDresult += info->xmt_zero;
+        if(PIDresult < 0)
+        {
+            PIDresult = 0;
+        }else if(PIDresult > 0.35)
+        {
+            PIDresult = 0.35;
+        }
+
+        info->xmt_zero = PIDresult;
+        printf("PIDresult = %f, averagePIDresult = %f\n", PIDresult, putCycleBuffer(cb, PIDresult)/(double)cb->count);
+
+        #ifndef DEBUG_MODE
+            xmt_numtodata(xmt_data_ins, 0, 0, PIDresult);
+            res = xmt_datainlist(xmt_data_ins, buf);
+            write(info->fd, buf, res);
+        #endif
+
+        fprintf(fp, "%d,%lf,%lf,%lf\n", count * SAMPLETIME / 1000.0, before_filter, info->xmt_zero, ( info->foundation_zero)/ info->hangLenth / info->amplify);
         
         if (count % 100000 == 0 && count != 0)
         {
@@ -246,7 +252,7 @@ void *xmtReceiveInputThread(void *arg)
                 printf("无法创建文件\n");
                 return NULL;
             }
-            fprintf(fp, "count,CL_origin,CL_filter,xmt_control\n");
+            fprintf(fp, "count,CL_filter,xmt_control,zero\n");
         }
         count += 1;
     }

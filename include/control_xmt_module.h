@@ -21,8 +21,9 @@
 #include "pipe.h"
 #include "filter.h"
 #include "pid_core.h"
-#include  "control_cl_module.h"
+#include "control_cl_module.h"
 #include "StControl_xmt_module_info.h"
+#include "cycleBuffer.h"
 
 #define XMT_OFFSET 0.150
 

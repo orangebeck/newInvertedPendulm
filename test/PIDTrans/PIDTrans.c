@@ -17,7 +17,7 @@ typedef struct {
 } PIDController;
 
 // 初始化PID控制器
-void PID_Init(PIDController* pid, float kp, float ki, float kd, float max_output, float min_output, float max_integral) {
+void PID_Init(PIDController* pid, float kp, float ki, float kd, float max_output, float min_output, float max_integral, double ratio) {
     pid->kp = kp;
     pid->ki = ki;
     pid->kd = kd;

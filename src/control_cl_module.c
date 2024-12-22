@@ -104,14 +104,20 @@ void timer_thread(int signo, siginfo_t *sigInfo, void *context)
         char buf[1024];
 
         control_cl_module_info *info = (control_cl_module_info *)sigInfo->si_value.sival_ptr;
-        res = CL_output_measure_value(buf, value, out1);
-        write(info->fd, buf, res);
-        res = read(info->fd, buf, 1024);
 
-        CL_ret_data(buf);
+        #ifndef DEBUG_MODE
+            res = CL_output_measure_value(buf, value, out1);
+            write(info->fd, buf, res);
+            res = read(info->fd, buf, 1024);
+            CL_ret_data(buf);
+        #endif
 
         pthread_mutex_lock(&info->mutex);
-        info->clData = CL_decode_value(buf);
+        #ifndef DEBUG_MODE
+            info->clData = CL_decode_value(buf);
+        #else
+            info->clData = double(rand() % 1000) / 1000.0;
+        #endif
         pthread_cond_signal(&info->cond);
         pthread_mutex_unlock(&info->mutex);
         printf("%s info->clData = %f\n", __func__, info->clData);
@@ -179,19 +185,23 @@ void *clReceiveInputThread(void *arg)
     control_cl_module_info *info = (control_cl_module_info *)arg;
     timer_t timeHandler;
     struct termios termios_tty;
-    char *clTtyPath = "/dev/ttySTM1";
 
-    info->fd = fd_init(clTtyPath);
-    clConfigTty(info->fd, &termios_tty);
-
-    CL_init(info->fd);
-
+    #ifndef DEBUG_MODE
+        char *clTtyPath = "/dev/ttySTM1";
+        info->fd = fd_init(clTtyPath);
+        clConfigTty(info->fd, &termios_tty);
+        CL_init(info->fd);
+    #endif
+    
     timeHandler = signal_init(info);
 
     pthread_mutex_lock(&pipeShareDataSt->stop_mutex);
     pthread_cond_wait(&pipeShareDataSt->stop_cond, &pipeShareDataSt->stop_mutex);
     pthread_mutex_unlock(&pipeShareDataSt->stop_mutex);
-    stopThread(info->fd);
+
+    #ifndef DEBUG_MODE
+        stopThread(info->fd);
+    #endif
 
     timer_delete(timeHandler);
     pthread_cond_broadcast(&info->cond);
