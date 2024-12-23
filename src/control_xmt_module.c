@@ -145,7 +145,7 @@ void get_file_name(char *buf, size_t bufSize)
     timeinfo = localtime(&rawtime);
 
     // 格式化时间。例如：2023-03-27 15:00:00
-    strftime(buf, bufSize - strlen(buffer_type), "%Y-%m-%d %H:%M:%S", timeinfo);
+    strftime(buf, bufSize - strlen(buffer_type), "%Y-%m-%d_%H:%M:%S", timeinfo);
     printf("%s\n", buf);
 
     // Append the file type
@@ -163,6 +163,7 @@ FILE* createSaveFile()
     if (fp == NULL)
     {
         printf("无法创建文件\n");
+        perror("Error opening file");
         return NULL;
     }
     fprintf(fp, "count,CL_filter,xmt_control,zero\n");
@@ -241,7 +242,7 @@ void *xmtReceiveInputThread(void *arg)
             write(info->fd, buf, res);
         #endif
 
-        fprintf(fp, "%d,%lf,%lf,%lf\n", count * SAMPLETIME / 1000.0, before_filter, info->xmt_zero, ( info->foundation_zero)/ info->hangLenth / info->amplify);
+        fprintf(fp, "%lf,%lf,%lf,%lf\n", (double)count * SAMPLETIME / 1000.0, before_filter, info->xmt_zero, ( info->foundation_zero)/ info->hangLenth / info->amplify);
         
         if (count % 100000 == 0 && count != 0)
         {
@@ -257,7 +258,9 @@ void *xmtReceiveInputThread(void *arg)
         count += 1;
     }
     
-    free(xmt_data_ins);
+    #ifndef DEBUG_MODE
+        free(xmt_data_ins);
+    #endif
     close(info->fd);
 configErr:
     pthread_exit(NULL);  // 线程退出

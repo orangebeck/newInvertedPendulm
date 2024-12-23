@@ -116,7 +116,7 @@ void timer_thread(int signo, siginfo_t *sigInfo, void *context)
         #ifndef DEBUG_MODE
             info->clData = CL_decode_value(buf);
         #else
-            info->clData = double(rand() % 1000) / 1000.0;
+            info->clData = (double)(rand() % 1000) / 1000.0;
         #endif
         pthread_cond_signal(&info->cond);
         pthread_mutex_unlock(&info->mutex);

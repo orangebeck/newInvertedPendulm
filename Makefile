@@ -8,19 +8,19 @@ endif
 LDFLAGS = -lpthread -lrt
 TARGET = bin/app
 SRC = $(wildcard src/*.c)
-OBJ = $(patsubst src/%, bin/%, $(SRC:.c=.o))
+OBJ = $(patsubst src/%, build/%, $(SRC:.c=.o))
 
 all: $(TARGET)
-	ifeq ($(TARGET_ARCH), arm)
-		cp ./$(TARGET) ~/workdir/
-	endif
+ifeq ($(TARGET_ARCH), arm)
+	cp ./$(TARGET) ~/workdir/
+endif
 	
 $(TARGET): $(OBJ)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-bin/%.o: src/%.c
+build/%.o: src/%.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@ $(LDFLAGS)
 
 clean:
-	rm -rf bin/*
+	rm -rf bin/* build/* ./*.csv

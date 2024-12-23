@@ -10,7 +10,7 @@ control_xmt_module_info *control_xmt_module_infoSt = NULL;
 
 int main(int argc, char *argv[])
 {
-    const char path[] = "/var/application";
+    char path[] = "/var/application";
     int ret = 0;
     pthread_t pipeThread;
     pthread_t clThread;
