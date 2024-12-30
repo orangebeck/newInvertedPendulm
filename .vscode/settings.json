@@ -1,5 +1,7 @@
 {
     "files.associations": {
+        "*.c": "c",
+        "*.cpp": "cpp",
         "cl_hal_driver.h": "c",
         "stdio.h": "c",
         "pipe.h": "c",
@@ -16,6 +18,7 @@
         "stdlib.h": "c",
         "motor.h": "c",
         "stcontrol_xmt_module_info.h": "c",
-        "msg.h": "c"
+        "msg.h": "c",
+        "float.h": "c"
     }
 }

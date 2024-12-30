@@ -253,7 +253,6 @@ void *xmtReceiveInputThread(void *arg)
                 printf("无法创建文件\n");
                 return NULL;
             }
-            fprintf(fp, "count,CL_filter,xmt_control,zero\n");
         }
         count += 1;
     }

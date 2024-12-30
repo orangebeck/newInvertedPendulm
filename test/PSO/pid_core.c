@@ -17,7 +17,7 @@ double PID_Compute(PIDController *pid, double setpoint, double measuredValue, do
     if(pid->Kp == 0 && pid->Ki == 0 && pid->Kp == 0) return 0.0;
     
     double error = setpoint - measuredValue;
-    if(error > 2 || error <-2) return 0;
+    if(error > 20 || error <-20) return 0;
     double integral = pid->integral + error * dt;
     if (integral > pid->integralMax) {
         pid->integral = pid->integralMax;
@@ -39,10 +39,6 @@ double PID_Compute(PIDController *pid, double setpoint, double measuredValue, do
 
     // Update state
     pid->prevError = error;
-
-    printf("\nerror = %f\t", error);
-    printf("pid->integral = %f\t", pid->integral);
-    printf("derivative = %f\n", derivative);
-
+    // pid->integral = integral;
     return output;
 }

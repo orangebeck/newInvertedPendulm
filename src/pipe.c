@@ -80,12 +80,15 @@ int createPipe(char *path)
 
 int openPipe(char *path)
 {
+    char buffer[BUFFER_SIZE];
     int fd = open(path, O_RDWR);
     if (fd == -1)
     {
         perror("open");
         return ERROR_PIPE_OPEN;
     }
+    while (read(fd, buffer, BUFFER_SIZE) > 0); // 清空缓冲区
+    
     printf("Named pipe opened at %s\n", path);
     return fd;
 }
