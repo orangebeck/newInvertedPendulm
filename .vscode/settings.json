@@ -20,5 +20,6 @@
         "stcontrol_xmt_module_info.h": "c",
         "msg.h": "c",
         "float.h": "c"
-    }
+    },
+    "makefile.configureOnOpen": true
 }
