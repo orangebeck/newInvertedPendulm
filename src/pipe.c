@@ -41,7 +41,20 @@ pipeShareData *initPipeShareDataSt(){
         return NULL;
     }
 
+    if (pthread_mutex_init(&data->pso_mutex, NULL) != 0) {
+        perror("Mutex initialization failed");
+        free(data);
+        return NULL;
+    }
+
     if (pthread_cond_init(&data->stop_cond, NULL) != 0) {
+        perror("Condition variable initialization failed");
+        pthread_mutex_destroy(&data->stop_mutex);
+        free(data);
+        return NULL;
+    }
+
+    if (pthread_cond_init(&data->pso_mutex, NULL) != 0) {
         perror("Condition variable initialization failed");
         pthread_mutex_destroy(&data->stop_mutex);
         free(data);
@@ -176,6 +189,10 @@ int pipeControl(char *infoList[], pipeShareData *pipeShareDataSt)
                 ioctl(motor_fd, MOTOR_IOCTL_CMD_SET_VALUE, &motorList[atoi(infoList[i + 1])].motor_ctrl);
             }
         }
+    }
+    if (strcmp(infoList[0], "PSO") == 0)
+    {
+        pthread_cond_broadcast(&pipeShareDataSt->pso_cond);
     }
     if (strcmp(infoList[0], "KILL") == 0)
     {

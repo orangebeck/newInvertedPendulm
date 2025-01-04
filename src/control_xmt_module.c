@@ -172,7 +172,34 @@ FILE* createSaveFile()
     return fp;
 }
 
-void *xmtReceiveInputThread(void *arg)
+void *PSOControlThread(void *arg)
+{   
+    control_xmt_module_info *info = (control_xmt_module_info *)arg;
+    PSO pso;
+    srand(time(NULL));
+    while (pipeShareDataSt->stopThread == 0)
+    {
+        pthread_mutex_lock(&pipeShareDataSt->pso_mutex);
+        pthread_cond_wait(&pipeShareDataSt->pso_cond, &pipeShareDataSt->pso_mutex); 
+        pthread_mutex_unlock(&pipeShareDataSt->pso_mutex);
+
+        printf("PSOControlThread start\n");
+        pso.target = info->foundation_zero;
+        pso.ITAETime = 20.0;
+        pso.PIDSamplingTime = info->dt;
+        PID_Init(&(pso.pid), 1.0, 0.0, 0.0, 10, 10);
+        initPSO(&pso);
+
+        for (int i = 0; i < MAX_ITERATIONS; i++) {
+            pso.iteration = i;
+            updateParticle(&pso);
+            printf("Iteration %d: Best fitness = %f, Kp = %f, Ki = %f, Kd = %f\n", i, pso.globalBestFitness, pso.globalBestPosition[0], pso.globalBestPosition[1], pso.globalBestPosition[2]);
+        }
+    }
+    pthread_exit(NULL);  // 线程退出
+}
+
+void *PIDControlThread(void *arg)
 {
     control_xmt_module_info *info = (control_xmt_module_info *)arg;
     struct termios termios_tty;
@@ -256,11 +283,38 @@ void *xmtReceiveInputThread(void *arg)
         }
         count += 1;
     }
-    
-    #ifndef DEBUG_MODE
-        free(xmt_data_ins);
-    #endif
+#ifndef DEBUG_MODE
+    free(xmt_data_ins);
+#endif
     close(info->fd);
+
 configErr:
     pthread_exit(NULL);  // 线程退出
+}
+
+void *xmtReceiveInputThread(void *arg)
+{
+    pthread_t PSOThread;
+    pthread_t PIDThread;
+
+    if (pthread_create(&PSOThread, NULL, PSOControlThread, (void *)arg) != 0) {
+        perror("Thread creation failed");
+        return 1;
+    }
+
+    if (pthread_create(&PIDThread, NULL, PIDControlThread, (void *)arg) != 0) {
+        perror("Thread creation failed");
+        return 1;
+    }
+
+    if (pthread_join(PSOThread, NULL) != 0) {
+    perror("Thread join failed");
+    return -1;
+    }
+
+    if (pthread_join(PIDThread, NULL) != 0) {
+        perror("Thread join failed");
+        return -1;
+    }
+    return NULL;
 }

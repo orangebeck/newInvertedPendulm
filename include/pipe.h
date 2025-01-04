@@ -23,6 +23,9 @@ typedef struct pipeShareData{
     int stopThread;
     pthread_mutex_t stop_mutex; 
     pthread_cond_t stop_cond;
+
+    pthread_mutex_t pso_mutex; 
+    pthread_cond_t pso_cond;
 }pipeShareData;
 
 extern control_xmt_module_info *control_xmt_module_infoSt;

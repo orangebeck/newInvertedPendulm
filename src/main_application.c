@@ -26,33 +26,33 @@ int main(int argc, char *argv[])
     // 创建线程，传入线程函数和参数（这里我们传入NULL）
     if (pthread_create(&pipeThread, NULL, pipeReceiveInputThread, (void *)pipeShareDataSt) != 0) {
         perror("Thread creation failed");
-        return 1;
+        return -1;
     }
 
     if (pthread_create(&clThread, NULL, clReceiveInputThread, (void *)control_cl_module_infoSt) != 0) {
         perror("Thread creation failed");
-        return 1;
+        return -1;
     }
 
     if (pthread_create(&xmtThread, NULL, xmtReceiveInputThread, (void *)control_xmt_module_infoSt) != 0) {
         perror("Thread creation failed");
-        return 1;
+        return -1;
     }
 
     // 等待线程完成
     if (pthread_join(pipeThread, NULL) != 0) {
         perror("Thread join failed");
-        return 1;
+        return -1;
     }
 
     if (pthread_join(clThread, NULL) != 0) {
         perror("Thread join failed");
-        return 1;
+        return -1;
     }
 
     if (pthread_join(xmtThread, NULL) != 0) {
         perror("Thread join failed");
-        return 1;
+        return -1;
     }
     free(control_cl_module_infoSt);
     free(pipeShareDataSt);
