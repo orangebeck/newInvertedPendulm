@@ -50,7 +50,7 @@ int updateParticle(PSO *p)
             p->particles[i].velocity[j] = WIteration(p->iteration) * p->particles[i].velocity[j] + C1 * rand() / RAND_MAX * (p->particles[i].bestPosition[j] - p->particles[i].position[j]) + C2 * rand() / RAND_MAX * (p->globalBestPosition[i] - p->particles[i].position[j]);
             p->particles[i].position[j] += p->particles[i].velocity[j];
         }
-        p->particles[i].fitness = fitness(p, i);
+        p->particles[i].fitness = fitness(p, i, p->target, p->ITAETime, p->PIDSamplingTime);
         if (p->particles[i].fitness < p->particles[i].bestFitness) {
             for (int j = 0; j < DIMENSIONS; j++) {
                 p->particles[i].bestPosition[j] = p->particles[i].position[j];

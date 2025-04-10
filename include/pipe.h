@@ -16,6 +16,12 @@
 #define BUFFER_SIZE 256
 #define MAX_TOKEN 100
 
+struct pipeShareData;
+
+// 函数指针类型定义
+typedef void (*send_func_value_t)(struct pipeShareData*, double);
+typedef void (*send_func_command_t)(struct pipeShareData*, int);
+
 typedef struct pipeShareData{
     PIDController pid;
     char *path;
@@ -26,6 +32,23 @@ typedef struct pipeShareData{
 
     pthread_mutex_t pso_mutex; 
     pthread_cond_t pso_cond;
+
+    pthread_mutex_t start_mutex; 
+    pthread_cond_t start_cond;
+    int start_flag;
+
+    //设置一个互斥锁
+    int send_fd;
+    pthread_mutex_t write_mutex;
+
+    // 函数指针
+    send_func_value_t send_xmt_value;
+    send_func_value_t send_cl_value;
+    send_func_value_t send_pid_error;
+    send_func_value_t send_pid_intergrate;
+
+    send_func_command_t send_xmt_command;
+    send_func_command_t send_cl_command;
 }pipeShareData;
 
 extern control_xmt_module_info *control_xmt_module_infoSt;
@@ -45,6 +68,18 @@ int pipeControl(char *infoList[], pipeShareData *pipeShareDataSt);
 
 void *pipeReceiveInputThread(void *arg);
 
+void send_buffer(pipeShareData* data, const char *buffer, int len);
 
+void send_xmt_value_impl(pipeShareData* data, double value);
+
+void send_cl_value_impl(pipeShareData* data, double value);
+
+void send_pid_error_impl(pipeShareData* data, double value);
+
+void send_pid_intergrate_impl(pipeShareData* data, double value);
+
+void send_xmt_command_impl(struct pipeShareData* data, int mode);
+
+void send_cl_command_impl(struct pipeShareData* data, int mode);
 
 #endif

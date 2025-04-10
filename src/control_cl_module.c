@@ -118,9 +118,10 @@ void timer_thread(int signo, siginfo_t *sigInfo, void *context)
         #else
             info->clData = (double)(rand() % 1000) / 1000.0;
         #endif
+        pipeShareDataSt->send_cl_value(pipeShareDataSt, info->clData);
+
         pthread_cond_signal(&info->cond);
         pthread_mutex_unlock(&info->mutex);
-        printf("%s info->clData = %f\n", __func__, info->clData);
     }else
     {
         printf("timer_thread\n");
@@ -165,11 +166,19 @@ timer_t signal_init(control_cl_module_info *info)
         return NULL;
     }
 
-    // 设置定时器间隔为 250 毫秒
+    // 设置定时器间隔为 SAMPLETIME 毫秒
     timer_spec.it_value.tv_sec = 0;
     timer_spec.it_value.tv_nsec = SAMPLETIME * 1000000L;  // 250 毫秒
     timer_spec.it_interval.tv_sec = 0;
     timer_spec.it_interval.tv_nsec = SAMPLETIME * 1000000L;  // 250 毫秒
+
+    if(pipeShareDataSt->start_flag == 0)
+    {
+        pthread_mutex_lock(&pipeShareDataSt->start_mutex);
+        pthread_cond_wait(&pipeShareDataSt->start_cond, &pipeShareDataSt->start_mutex);
+        pthread_mutex_unlock(&pipeShareDataSt->start_mutex);
+    }
+
 
     // 启动定时器
     if (timer_settime(timer_id, 0, &timer_spec, NULL) == -1) {
@@ -177,6 +186,7 @@ timer_t signal_init(control_cl_module_info *info)
         return NULL;
     }
     printf("CL signal init successfully!\n");
+    pipeShareDataSt->send_cl_command(pipeShareDataSt, 1);
     return timer_id;
 }
 
@@ -187,10 +197,10 @@ void *clReceiveInputThread(void *arg)
     struct termios termios_tty;
 
     #ifndef DEBUG_MODE
-        char *clTtyPath = "/dev/ttySTM1";
-        info->fd = fd_init(clTtyPath);
-        clConfigTty(info->fd, &termios_tty);
-        CL_init(info->fd);
+    char *clTtyPath = "/dev/ttySTM1";
+    info->fd = fd_init(clTtyPath);
+    clConfigTty(info->fd, &termios_tty);
+    CL_init(info->fd);
     #endif
     
     timeHandler = signal_init(info);
@@ -200,7 +210,7 @@ void *clReceiveInputThread(void *arg)
     pthread_mutex_unlock(&pipeShareDataSt->stop_mutex);
 
     #ifndef DEBUG_MODE
-        stopThread(info->fd);
+    stopThread(info->fd);
     #endif
 
     timer_delete(timeHandler);

@@ -3,6 +3,9 @@
 
 int  stopThreadFlag = 0;
 
+char *send_path = "/home/zhouweijie/pipeToQT";
+char *receive_path = "/home/zhouweijie/pipeToApp";
+
 motor motorList[] = {
     {
         .led = 4.0,
@@ -21,9 +24,7 @@ motor motorList[] = {
     {}
 };
 
-
 int motor_fd;
-
 
 pipeShareData *initPipeShareDataSt(){
     pipeShareData *data = (pipeShareData *)malloc(sizeof(pipeShareData));
@@ -47,6 +48,18 @@ pipeShareData *initPipeShareDataSt(){
         return NULL;
     }
 
+    if (pthread_mutex_init(&data->start_mutex, NULL) != 0) {
+        perror("Mutex initialization failed");
+        free(data);
+        return NULL;
+    }
+
+    if (pthread_mutex_init(&data->write_mutex, NULL) != 0) {
+        perror("Mutex initialization failed");
+        free(data);
+        return NULL;
+    }
+
     if (pthread_cond_init(&data->stop_cond, NULL) != 0) {
         perror("Condition variable initialization failed");
         pthread_mutex_destroy(&data->stop_mutex);
@@ -54,12 +67,27 @@ pipeShareData *initPipeShareDataSt(){
         return NULL;
     }
 
-    if (pthread_cond_init(&data->pso_mutex, NULL) != 0) {
+    if (pthread_cond_init(&data->pso_cond, NULL) != 0) {
         perror("Condition variable initialization failed");
-        pthread_mutex_destroy(&data->stop_mutex);
+        pthread_mutex_destroy(&data->pso_mutex);
         free(data);
         return NULL;
     }
+
+    if (pthread_cond_init(&data->start_cond, NULL) != 0) {
+        perror("Condition variable initialization failed");
+        pthread_mutex_destroy(&data->start_mutex);
+        free(data);
+        return NULL;
+    }
+
+    data->send_xmt_value = send_xmt_value_impl;
+    data->send_xmt_command = send_xmt_command_impl;
+    data->send_cl_value = send_cl_value_impl;
+    data->send_cl_command = send_cl_command_impl;
+
+    data->send_pid_error = send_pid_error_impl;
+    data->send_pid_intergrate = send_pid_intergrate_impl;
 
     return data;
 }
@@ -98,11 +126,12 @@ int openPipe(char *path)
     if (fd == -1)
     {
         perror("open");
+        printf("fail to open\n");
         return ERROR_PIPE_OPEN;
     }
-    while (read(fd, buffer, BUFFER_SIZE) > 0); // 清空缓冲区
+    // while (read(fd, buffer, BUFFER_SIZE) > 0); // 清空缓冲区 这里面存在问题
     
-    printf("Named pipe opened at %s\n", path);
+    printf("Named pipe opened at %s, fd = %d\n", path, fd);
     return fd;
 }
 
@@ -137,17 +166,21 @@ int pipeControl(char *infoList[], pipeShareData *pipeShareDataSt)
             if (strcmp(infoList[i], "P") == 0)
             {
                 pipeShareDataSt->pid.Kp = atof(infoList[i + 1]);
+                printf("%s PID P = %f\n", __func__, atof(infoList[i + 1]));
             }
             else if (strcmp(infoList[i], "I") == 0)
             {
                 pipeShareDataSt->pid.Ki = atof(infoList[i + 1]);
+                printf("%s PID I = %f\n", __func__, atof(infoList[i + 1]));
             }
             else if (strcmp(infoList[i], "D") == 0)
             {
                 pipeShareDataSt->pid.Kd = atof(infoList[i + 1]);
+                printf("%s PID D = %f\n", __func__, atof(infoList[i + 1]));
             }
             pthread_mutex_unlock(&pipeShareDataSt->stop_mutex);
         }
+        return 0;
     }
     if (strcmp(infoList[0], "XMT") == 0)
     {
@@ -171,28 +204,40 @@ int pipeControl(char *infoList[], pipeShareData *pipeShareDataSt)
             }
             pthread_mutex_unlock(&control_xmt_module_infoSt->mutex);
         }
+        return 0;
     }
     if (strcmp(infoList[0], "MOTOR") == 0) // MOTOR U/D 0/1 length
     {
         for (int i = 1; i < 2; i += 2)
         {
-            if (strcmp(infoList[i], "U") == 0)
+            if (strcmp(infoList[i], "WEIGHT") == 0)
             {
                 motorList[atoi(infoList[i + 1])].motor_ctrl.dir = 0;
                 motorList[atoi(infoList[i + 1])].motor_ctrl.pul = (int)(abs(atof(infoList[i + 2]))/motorList[atoi(infoList[i + 1])].led*motorList[atoi(infoList[i + 1])].motor_ctrl.micro);
+                #ifndef DEBUG_MODE
                 ioctl(motor_fd, MOTOR_IOCTL_CMD_SET_VALUE, &motorList[atoi(infoList[i + 1])].motor_ctrl);
+                #endif
+                printf("%s motorList WEIGHT = %s , %s\n", __func__, infoList[i + 1] , infoList[i + 2] );
+                
             }
-            else if (strcmp(infoList[i], "D") == 0)
+            else if (strcmp(infoList[i], "LASER") == 0)
             {
+                
                 motorList[atoi(infoList[i + 1])].motor_ctrl.dir = 1;
                 motorList[atoi(infoList[i + 1])].motor_ctrl.pul = (int)(abs(atof(infoList[i + 2]))/motorList[atoi(infoList[i + 1])].led*motorList[atoi(infoList[i + 1])].motor_ctrl.micro);
+                #ifndef DEBUG_MODE
                 ioctl(motor_fd, MOTOR_IOCTL_CMD_SET_VALUE, &motorList[atoi(infoList[i + 1])].motor_ctrl);
+                #endif
+                printf("%s motorList LASER = %s , %s\n", __func__, infoList[i + 1] , infoList[i + 2] );
             }
         }
+        return 0;
     }
     if (strcmp(infoList[0], "PSO") == 0)
     {
         pthread_cond_broadcast(&pipeShareDataSt->pso_cond);
+        printf("%s PSO = %s\n", __func__, infoList[0]);
+        return 0;
     }
     if (strcmp(infoList[0], "KILL") == 0)
     {
@@ -200,9 +245,116 @@ int pipeControl(char *infoList[], pipeShareData *pipeShareDataSt)
         pipeShareDataSt->stopThread = 1;
         pthread_mutex_unlock(&pipeShareDataSt->stop_mutex);
         pthread_cond_broadcast(&pipeShareDataSt->stop_cond);
+        return 0;
+    }
+
+    //现在暂时使用全为 0 和数据作为pid开关
+    if (strcmp(infoList[0], "O") == 0)
+    {
+        return 0;
+    }
+
+    if (strcmp(infoList[0], "C") == 0)
+    {
+        return 0;
+    }
+
+    if (strcmp(infoList[0], "Dead") == 0)
+    {
+        pipeShareDataSt->pid.deadzone = atof(infoList[1]);
+        printf("%s Dead = %f\n", __func__, atof(infoList[1]));
+        return 0;
+    }
+
+    //Zero %f
+    if (strcmp(infoList[0], "Zero") == 0)
+    {
+        control_xmt_module_infoSt->foundation_zero = atof(infoList[1]);
+        printf("%s Zero = %f\n", __func__, atof(infoList[1]));
+        return 0;
     }
 
     return 0;
+}
+
+void send_buffer(pipeShareData* data, const char *buffer, int len) {
+    if (!data) return;
+    
+    pthread_mutex_lock(&data->write_mutex);
+    write(data->send_fd, &len, sizeof(int));
+    write(data->send_fd, buffer, len);
+    // fsync(data->send_fd);  // 强制刷新缓冲区
+    pthread_mutex_unlock(&data->write_mutex);
+}
+
+void send_xmt_value_impl(pipeShareData* data, double value) {
+    if (!data) return;
+    
+    char buffer[64];
+    int len = snprintf(buffer, sizeof(buffer), "XMT %f\n", value);
+    
+    send_buffer(data, buffer, len);
+}
+
+void send_cl_value_impl(pipeShareData* data, double value) {
+    if (!data) return;
+    
+    char buffer[64];
+    int len = snprintf(buffer, sizeof(buffer), "CL %f\n", value);
+    
+    send_buffer(data, buffer, len);
+}
+
+void send_pid_error_impl(pipeShareData* data, double value) {
+    if (!data) return;
+    
+    char buffer[64];
+    int len = snprintf(buffer, sizeof(buffer), "Error %f\n", value);
+    
+    send_buffer(data, buffer, len);
+}
+
+void send_pid_intergrate_impl(pipeShareData* data, double value) {
+    if (!data) return;
+    
+    char buffer[64];
+    int len = snprintf(buffer, sizeof(buffer), "Integrate %f\n", value);
+    
+    send_buffer(data, buffer, len);
+}
+
+void send_xmt_command_impl(struct pipeShareData* data, int mode)
+{
+    if (!data) return;
+    
+    char buffer[64];
+    int len = 0;
+    if (mode == 0)
+    {
+        len = snprintf(buffer, sizeof(buffer), "XMT Error\n");
+    }else if (mode == 1)
+    {
+        len = snprintf(buffer, sizeof(buffer), "XMT Ready\n");
+    }
+    
+    send_buffer(data, buffer, len);
+}
+
+void send_cl_command_impl(struct pipeShareData* data, int mode)
+{
+    if (!data) return;
+    
+    char buffer[64];
+    int len = 0;
+    if (mode == 0)
+    {
+        len = snprintf(buffer, sizeof(buffer), "CL Error\n");
+    }else if (mode == 1)
+    {
+        len = snprintf(buffer, sizeof(buffer), "CL Ready\n");
+    }
+    
+    send_buffer(data, buffer, len);
 }
 
 void *pipeReceiveInputThread(void *arg)
@@ -214,17 +366,23 @@ void *pipeReceiveInputThread(void *arg)
     char *infoList[MAX_TOKEN];
     int infoNum = 0;
 
-    printf("path = %s\n", pipeShareDataSt->path);
+    // 创建接收管道
+    if (createPipe(receive_path) < 0)
+    {
+        *result = ERROR_PIPE_CREATE;
+        pthread_exit(result);
+    }
 
-    // 创建管道
-    if (createPipe(pipeShareDataSt->path) < 0)
+    // 创建发送管道
+    if (createPipe(send_path) < 0)
     {
         *result = ERROR_PIPE_CREATE;
         pthread_exit(result);
     }
 
     // 打开管道
-    fd = openPipe(pipeShareDataSt->path);
+    fd = openPipe(receive_path);
+    pipeShareDataSt->send_fd = openPipe(send_path);
     motor_fd = open(MOTOR_DEVICE_NAME, O_RDWR);
     if (fd < 0)
     {
@@ -232,9 +390,18 @@ void *pipeReceiveInputThread(void *arg)
         pthread_exit(result);
     }
 
+    pthread_mutex_lock(&pipeShareDataSt->start_mutex);
+    pthread_cond_signal(&pipeShareDataSt->start_cond);
+    pthread_mutex_unlock(&pipeShareDataSt->start_mutex);
+    pipeShareDataSt->start_flag = 1;
+
+    printf("%s start to pipe\n", __func__);
+
     while (pipeShareDataSt->stopThread == 0)
     {
-        ssize_t bytes_read = read(fd, buffer, BUFFER_SIZE - 1);
+        int len;
+        ssize_t bytes_read = read(fd, &len, sizeof(len));
+        bytes_read = read(fd, buffer, len);
         if (bytes_read == -1)
         {
             break;
@@ -246,7 +413,7 @@ void *pipeReceiveInputThread(void *arg)
 
         parseString(buffer, infoList, &infoNum);
         if (infoNum > 0) pipeControl(infoList, pipeShareDataSt);
-        printf("Kp: %f, Ki: %f, Kd: %f\n", pipeShareDataSt->pid.Kp, pipeShareDataSt->pid.Ki, pipeShareDataSt->pid.Kd);
+        // printf("Kp: %f, Ki: %f, Kd: %f\n", pipeShareDataSt->pid.Kp, pipeShareDataSt->pid.Ki, pipeShareDataSt->pid.Kd);
     }
 
     close(motor_fd);

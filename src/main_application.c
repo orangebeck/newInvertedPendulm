@@ -10,7 +10,6 @@ control_xmt_module_info *control_xmt_module_infoSt = NULL;
 
 int main(int argc, char *argv[])
 {
-    char path[] = "/var/application";
     int ret = 0;
     pthread_t pipeThread;
     pthread_t clThread;
@@ -19,9 +18,6 @@ int main(int argc, char *argv[])
     pipeShareDataSt = initPipeShareDataSt();
     control_cl_module_infoSt = initControlClModule();
     control_xmt_module_infoSt = initControlXmtModule();
-
-    pipeShareDataSt->path = path;
-    printf("pipeShareDataSt->path = %s\n", pipeShareDataSt->path);
 
     // 创建线程，传入线程函数和参数（这里我们传入NULL）
     if (pthread_create(&pipeThread, NULL, pipeReceiveInputThread, (void *)pipeShareDataSt) != 0) {

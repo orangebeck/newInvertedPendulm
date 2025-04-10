@@ -145,7 +145,7 @@ void get_file_name(char *buf, size_t bufSize)
     timeinfo = localtime(&rawtime);
 
     // 格式化时间。例如：2023-03-27 15:00:00
-    strftime(buf, bufSize - strlen(buffer_type), "%Y-%m-%d_%H:%M:%S", timeinfo);
+    strftime(buf, bufSize - strlen(buffer_type), "%Y-%m-%d_%H-%M-%S", timeinfo);
     printf("%s\n", buf);
 
     // Append the file type
@@ -221,6 +221,7 @@ void *PIDControlThread(void *arg)
 
     if (res < 0) goto configErr;
     printf("XMT init successfully!\n");
+    pipeShareDataSt->send_xmt_command(pipeShareDataSt,1);
 
     #ifndef DEBUG_MODE
         xmt_numtodata(xmt_data_ins, 0, 0, XMT_OFFSET);
@@ -238,7 +239,7 @@ void *PIDControlThread(void *arg)
         before_filter = firFilterProcess(before_filter);
         
         pthread_mutex_lock(&info->mutex);
-        if(before_filter > info->foundation_zero+0.002 || before_filter < info->foundation_zero-0.002)
+        if(before_filter > info->foundation_zero+ pipeShareDataSt->pid.deadzone || before_filter < info->foundation_zero-pipeShareDataSt->pid.deadzone)
         {
             pipeShareDataSt->pid.ratio = 1.0;
             PIDresult = PID_Compute(&pipeShareDataSt->pid, info->foundation_zero / info->hangLenth / info->amplify, before_filter / info->hangLenth / info->amplify, info->dt);
@@ -249,7 +250,7 @@ void *PIDControlThread(void *arg)
             PIDresult = PID_Compute(&pipeShareDataSt->pid, info->foundation_zero / info->hangLenth / info->amplify, before_filter / info->hangLenth / info->amplify, info->dt);
         }
         pthread_mutex_unlock(&info->mutex);
-        printf("PID_Compute = %f\n", PIDresult);
+        // printf("PID_Compute = %f\n", PIDresult);
 
         PIDresult += info->xmt_zero;
         if(PIDresult < 0)
@@ -261,12 +262,15 @@ void *PIDControlThread(void *arg)
         }
 
         info->xmt_zero = PIDresult;
-        printf("PIDresult = %f, averagePIDresult = %f\n", PIDresult, putCycleBuffer(cb, PIDresult)/(double)cb->count);
-
+        // printf("PIDresult = %f, averagePIDresult = %f\n", PIDresult, putCycleBuffer(cb, PIDresult)/(double)cb->count);
+        pipeShareDataSt->send_pid_error(pipeShareDataSt, pipeShareDataSt->pid.prevError);
+        pipeShareDataSt->send_pid_intergrate(pipeShareDataSt, pipeShareDataSt->pid.integral);
+        pipeShareDataSt->send_xmt_value(pipeShareDataSt, PIDresult);
+        
         #ifndef DEBUG_MODE
-            xmt_numtodata(xmt_data_ins, 0, 0, PIDresult);
-            res = xmt_datainlist(xmt_data_ins, buf);
-            write(info->fd, buf, res);
+        xmt_numtodata(xmt_data_ins, 0, 0, PIDresult);
+        res = xmt_datainlist(xmt_data_ins, buf);
+        write(info->fd, buf, res);
         #endif
 
         fprintf(fp, "%lf,%lf,%lf,%lf\n", (double)count * SAMPLETIME / 1000.0, before_filter, info->xmt_zero, ( info->foundation_zero)/ info->hangLenth / info->amplify);
@@ -299,22 +303,22 @@ void *xmtReceiveInputThread(void *arg)
 
     if (pthread_create(&PSOThread, NULL, PSOControlThread, (void *)arg) != 0) {
         perror("Thread creation failed");
-        return 1;
+        return NULL;
     }
 
     if (pthread_create(&PIDThread, NULL, PIDControlThread, (void *)arg) != 0) {
         perror("Thread creation failed");
-        return 1;
+        return NULL;
     }
 
     if (pthread_join(PSOThread, NULL) != 0) {
     perror("Thread join failed");
-    return -1;
+    return NULL;
     }
 
     if (pthread_join(PIDThread, NULL) != 0) {
         perror("Thread join failed");
-        return -1;
+        return NULL;
     }
     return NULL;
 }

@@ -15,6 +15,8 @@ typedef struct PIDController {
     double integralMax;
 
     double ratio;
+
+    double deadzone;
 } PIDController;
 
 void PID_Init(PIDController* pid, double Kp, double Ki, double Kd, double outMax, double integralMax);

@@ -190,6 +190,7 @@ timer_t signal_init(control_cl_module_info *info)
         return NULL;
     }
     printf("CL signal init successfully!\n");
+
     return timer_id;
 }
 
