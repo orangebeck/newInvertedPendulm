@@ -187,7 +187,8 @@ void *PSOControlThread(void *arg)
         pso.target = info->foundation_zero;
         pso.ITAETime = 20.0;
         pso.PIDSamplingTime = info->dt;
-        PID_Init(&(pso.pid), 1.0, 0.0, 0.0, 10, 10);
+
+        backupPID(&pso,  &pipeShareDataSt->pid);
         initPSO(&pso);
 
         for (int i = 0; i < MAX_ITERATIONS; i++) {
@@ -195,6 +196,10 @@ void *PSOControlThread(void *arg)
             updateParticle(&pso);
             printf("Iteration %d: Best fitness = %f, Kp = %f, Ki = %f, Kd = %f\n", i, pso.globalBestFitness, pso.globalBestPosition[0], pso.globalBestPosition[1], pso.globalBestPosition[2]);
         }
+        send_pid_p_impl(pipeShareDataSt,pso.globalBestPosition[0]);
+        send_pid_i_impl(pipeShareDataSt,pso.globalBestPosition[1]);
+        send_pid_d_impl(pipeShareDataSt,pso.globalBestPosition[2]);
+
     }
     pthread_exit(NULL);  // 线程退出
 }
@@ -238,35 +243,41 @@ void *PIDControlThread(void *arg)
 
         before_filter = firFilterProcess(before_filter);
         
-        pthread_mutex_lock(&info->mutex);
-        if(before_filter > info->foundation_zero+ pipeShareDataSt->pid.deadzone || before_filter < info->foundation_zero-pipeShareDataSt->pid.deadzone)
+        //如果放大倍数测量的时候就设置 pid_status == 0 ， 向xmt发送的消息为设定放大值
+        if(pipeShareDataSt->pid_status == 0)
         {
-            pipeShareDataSt->pid.ratio = 1.0;
-            PIDresult = PID_Compute(&pipeShareDataSt->pid, info->foundation_zero / info->hangLenth / info->amplify, before_filter / info->hangLenth / info->amplify, info->dt);
-        }else
+            PIDresult = pipeShareDataSt->amplify_set;
+        }else if (pipeShareDataSt->pid_status == 1)
         {
-            pipeShareDataSt->pid.integral = pipeShareDataSt->pid.integral / 2.0;
-            pipeShareDataSt->pid.ratio = 0.5;
-            PIDresult = PID_Compute(&pipeShareDataSt->pid, info->foundation_zero / info->hangLenth / info->amplify, before_filter / info->hangLenth / info->amplify, info->dt);
-        }
-        pthread_mutex_unlock(&info->mutex);
-        // printf("PID_Compute = %f\n", PIDresult);
+            pthread_mutex_lock(&info->mutex);
+            if(before_filter > info->foundation_zero+ pipeShareDataSt->pid.deadzone || before_filter < info->foundation_zero-pipeShareDataSt->pid.deadzone)
+            {
+                pipeShareDataSt->pid.ratio = 1.0;
+                PIDresult = PID_Compute(&pipeShareDataSt->pid, info->foundation_zero / info->hangLenth / info->amplify, before_filter / info->hangLenth / info->amplify, info->dt);
+            }else
+            {
+                pipeShareDataSt->pid.integral = pipeShareDataSt->pid.integral / 2.0;
+                pipeShareDataSt->pid.ratio = 0.5;
+                PIDresult = PID_Compute(&pipeShareDataSt->pid, info->foundation_zero / info->hangLenth / info->amplify, before_filter / info->hangLenth / info->amplify, info->dt);
+            }
+            pthread_mutex_unlock(&info->mutex);
+            // printf("PID_Compute = %f\n", PIDresult);
 
-        PIDresult += info->xmt_zero;
-        if(PIDresult < 0)
-        {
-            PIDresult = 0;
-        }else if(PIDresult > 0.35)
-        {
-            PIDresult = 0.35;
-        }
+            PIDresult += info->xmt_zero;
+            if(PIDresult < 0)
+            {
+                PIDresult = 0;
+            }else if(PIDresult > 0.35)
+            {
+                PIDresult = 0.35;
+            }
 
-        info->xmt_zero = PIDresult;
-        // printf("PIDresult = %f, averagePIDresult = %f\n", PIDresult, putCycleBuffer(cb, PIDresult)/(double)cb->count);
-        pipeShareDataSt->send_pid_error(pipeShareDataSt, pipeShareDataSt->pid.prevError);
-        pipeShareDataSt->send_pid_intergrate(pipeShareDataSt, pipeShareDataSt->pid.integral);
-        pipeShareDataSt->send_xmt_value(pipeShareDataSt, PIDresult);
-        
+            info->xmt_zero = PIDresult;
+            // printf("PIDresult = %f, averagePIDresult = %f\n", PIDresult, putCycleBuffer(cb, PIDresult)/(double)cb->count);
+            pipeShareDataSt->send_pid_error(pipeShareDataSt, pipeShareDataSt->pid.prevError);
+            pipeShareDataSt->send_pid_intergrate(pipeShareDataSt, pipeShareDataSt->pid.integral);
+            pipeShareDataSt->send_xmt_value(pipeShareDataSt, PIDresult);
+        }
         #ifndef DEBUG_MODE
         xmt_numtodata(xmt_data_ins, 0, 0, PIDresult);
         res = xmt_datainlist(xmt_data_ins, buf);

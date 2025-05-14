@@ -24,6 +24,10 @@ typedef void (*send_func_command_t)(struct pipeShareData*, int);
 
 typedef struct pipeShareData{
     PIDController pid;
+    int pid_status;
+
+    float amplify_set;
+
     char *path;
 
     int stopThread;
@@ -77,6 +81,12 @@ void send_cl_value_impl(pipeShareData* data, double value);
 void send_pid_error_impl(pipeShareData* data, double value);
 
 void send_pid_intergrate_impl(pipeShareData* data, double value);
+
+void send_pid_p_impl(pipeShareData* data, double value);
+ 
+void send_pid_i_impl(pipeShareData* data, double value);
+
+void send_pid_d_impl(pipeShareData* data, double value);
 
 void send_xmt_command_impl(struct pipeShareData* data, int mode);
 

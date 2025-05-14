@@ -163,6 +163,7 @@ int pipeControl(char *infoList[], pipeShareData *pipeShareDataSt)
         for (int i = 1; i < 2; i += 2)
         {
             pthread_mutex_lock(&pipeShareDataSt->stop_mutex);
+            pipeShareDataSt->pid_status = 1;
             if (strcmp(infoList[i], "P") == 0)
             {
                 pipeShareDataSt->pid.Kp = atof(infoList[i + 1]);
@@ -206,7 +207,32 @@ int pipeControl(char *infoList[], pipeShareData *pipeShareDataSt)
         }
         return 0;
     }
-    if (strcmp(infoList[0], "MOTOR") == 0) // MOTOR U/D 0/1 length
+    if (strcmp(infoList[0], "N") == 0)
+    {
+        for (int i = 1; i < 2; i += 2)
+        {
+           
+            if (strcmp(infoList[i], "O") == 0)
+            {
+                pthread_mutex_lock(&pipeShareDataSt->stop_mutex);
+                pipeShareDataSt->amplify_set = atof(infoList[i + 1]);
+                pipeShareDataSt->pid_status = 0;
+                printf("%s pipeShareDataSt->amplify_set = %f\n", __func__, pipeShareDataSt->amplify_set);
+                pthread_mutex_unlock(&pipeShareDataSt->stop_mutex);
+            }
+            
+            if (strcmp(infoList[i], "A") == 0)
+            {
+                pthread_mutex_lock(&control_xmt_module_infoSt->mutex);
+                control_xmt_module_infoSt->amplify = atof(infoList[i + 1]);
+                printf("%scontrol_xmt_module_infoSt->amplify  = %f\n", __func__, control_xmt_module_infoSt->amplify );
+                pthread_mutex_unlock(&control_xmt_module_infoSt->mutex);
+            }
+           
+        }
+        return 0;
+    }
+    if (strcmp(infoList[0], "M") == 0) // MOTOR U/D 0/1 length
     {
         for (int i = 1; i < 2; i += 2)
         {
@@ -319,6 +345,33 @@ void send_pid_intergrate_impl(pipeShareData* data, double value) {
     
     char buffer[64];
     int len = snprintf(buffer, sizeof(buffer), "Integrate %f\n", value);
+    
+    send_buffer(data, buffer, len);
+}
+
+void send_pid_p_impl(pipeShareData* data, double value) {
+    if (!data) return;
+    
+    char buffer[64];
+    int len = snprintf(buffer, sizeof(buffer), "P %f\n", value);
+    
+    send_buffer(data, buffer, len);
+}
+
+void send_pid_i_impl(pipeShareData* data, double value) {
+    if (!data) return;
+    
+    char buffer[64];
+    int len = snprintf(buffer, sizeof(buffer), "I %f\n", value);
+    
+    send_buffer(data, buffer, len);
+}
+
+void send_pid_d_impl(pipeShareData* data, double value) {
+    if (!data) return;
+    
+    char buffer[64];
+    int len = snprintf(buffer, sizeof(buffer), "D %f\n", value);
     
     send_buffer(data, buffer, len);
 }

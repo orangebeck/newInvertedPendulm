@@ -116,11 +116,13 @@ void timer_thread(int signo, siginfo_t *sigInfo, void *context)
         #ifndef DEBUG_MODE
             info->clData = CL_decode_value(buf);
         #else
-            info->clData = (double)(rand() % 1000) / 1000.0;
+            info->clData = (double)(rand() % 1000) / 100000.0;
         #endif
         pipeShareDataSt->send_cl_value(pipeShareDataSt, info->clData);
 
-        pthread_cond_signal(&info->cond);
+        // pthread_cond_signal(&info->cond);
+        pthread_cond_broadcast(&info->cond); //多个线程都会等待
+
         pthread_mutex_unlock(&info->mutex);
     }else
     {
