@@ -137,20 +137,31 @@ void get_file_name(char *buf, size_t bufSize)
 {
     time_t rawtime;
     struct tm *timeinfo;
-    char buffer_type[] = ".csv";
+    const char *folder = "data";
+    const char *ext = ".csv";
 
-    // 获取当前的系统时间
+    // 检查 data 文件夹是否存在，不存在则创建
+    struct stat st = {0};
+    if (stat(folder, &st) == -1) {
+        if (mkdir(folder, 0755) == -1) {
+            perror("Failed to create directory");
+            return;
+        }
+    }
+
+    // 获取当前时间
     time(&rawtime);
-    // 转换为本地时间
     timeinfo = localtime(&rawtime);
 
-    // 格式化时间。例如：2023-03-27 15:00:00
-    strftime(buf, bufSize - strlen(buffer_type), "%Y-%m-%d_%H-%M-%S", timeinfo);
-    printf("%s\n", buf);
+    // 构造文件名路径：data/YYYY-MM-DD_HH-MM-SS.csv
+    char timebuf[64];
+    strftime(timebuf, sizeof(timebuf), "%Y-%m-%d_%H-%M-%S", timeinfo);
 
-    // Append the file type
-    strcat(buf, buffer_type);
-    printf("%s\n", buf);
+    // 组合完整路径
+    snprintf(buf, bufSize, "%s/%s%s", folder, timebuf, ext);
+
+    // 打印调试信息
+    printf("File path: %s\n", buf);
 }
 
 FILE* createSaveFile()
@@ -261,9 +272,17 @@ void *PIDControlThread(void *arg)
                 PIDresult = PID_Compute(&pipeShareDataSt->pid, info->foundation_zero / info->hangLenth / info->amplify, before_filter / info->hangLenth / info->amplify, info->dt);
             }
             pthread_mutex_unlock(&info->mutex);
-            // printf("PID_Compute = %f\n", PIDresult);
 
             PIDresult += info->xmt_zero;
+            if(PIDresult >= 0.35)
+            {
+                PIDresult = 0.35;
+            }else if (PIDresult <= 0)
+            {
+                PIDresult = 0.0;
+            }
+            
+            // printf("PID_Compute = %f\n", PIDresult);
             if(PIDresult < 0)
             {
                 PIDresult = 0;

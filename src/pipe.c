@@ -238,23 +238,24 @@ int pipeControl(char *infoList[], pipeShareData *pipeShareDataSt)
         {
             if (strcmp(infoList[i], "WEIGHT") == 0)
             {
-                motorList[atoi(infoList[i + 1])].motor_ctrl.dir = 0;
-                motorList[atoi(infoList[i + 1])].motor_ctrl.pul = (int)(abs(atof(infoList[i + 2]))/motorList[atoi(infoList[i + 1])].led*motorList[atoi(infoList[i + 1])].motor_ctrl.micro);
+                float tmp  = atof(infoList[i + 1]);
+                motorList[0].motor_ctrl.dir = (tmp >= 0) ? 0 : 1;
+                motorList[0].motor_ctrl.pul = (int)(abs(tmp)/motorList[0].led*motorList[0].motor_ctrl.micro);
                 #ifndef DEBUG_MODE
-                ioctl(motor_fd, MOTOR_IOCTL_CMD_SET_VALUE, &motorList[atoi(infoList[i + 1])].motor_ctrl);
+                ioctl(motor_fd, MOTOR_IOCTL_CMD_SET_VALUE, &motorList[0].motor_ctrl);
                 #endif
-                printf("%s motorList WEIGHT = %s , %s\n", __func__, infoList[i + 1] , infoList[i + 2] );
+                printf("%s motorList WEIGHT = %s\n", __func__, infoList[i + 1] );
                 
             }
             else if (strcmp(infoList[i], "LASER") == 0)
             {
-                
-                motorList[atoi(infoList[i + 1])].motor_ctrl.dir = 1;
-                motorList[atoi(infoList[i + 1])].motor_ctrl.pul = (int)(abs(atof(infoList[i + 2]))/motorList[atoi(infoList[i + 1])].led*motorList[atoi(infoList[i + 1])].motor_ctrl.micro);
+                float tmp  = atof(infoList[i + 1]);
+                motorList[1].motor_ctrl.dir = (tmp >= 0) ? 0 : 1;
+                motorList[1].motor_ctrl.pul = (int)(abs(tmp)/motorList[1].led*motorList[1].motor_ctrl.micro);
                 #ifndef DEBUG_MODE
-                ioctl(motor_fd, MOTOR_IOCTL_CMD_SET_VALUE, &motorList[atoi(infoList[i + 1])].motor_ctrl);
+                ioctl(motor_fd, MOTOR_IOCTL_CMD_SET_VALUE, &motorList[1].motor_ctrl);
                 #endif
-                printf("%s motorList LASER = %s , %s\n", __func__, infoList[i + 1] , infoList[i + 2] );
+                printf("%s motorList LASER = %s \n", __func__, infoList[i + 1]);
             }
         }
         return 0;

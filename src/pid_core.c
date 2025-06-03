@@ -15,6 +15,7 @@ void PID_Init(PIDController* pid, double Kp, double Ki, double Kd, double outMax
 
 double PID_Compute(PIDController *pid, double setpoint, double measuredValue, double dt)
 {
+    // printf("[PID_Compute] setpoint = %f, measuredValue = %f\n", setpoint, measuredValue);
     if(pid->Kp == 0 && pid->Ki == 0 && pid->Kp == 0) return 0.0;
     
     double error = setpoint - measuredValue;

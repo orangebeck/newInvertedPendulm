@@ -54,7 +54,7 @@ double fitness(PSO *p, int i, double target, double ITAETime, double PIDSampling
     pthread_mutex_unlock(&control_xmt_module_infoSt->mutex);
     if( fabs(ret - target) > 0.01 )
     {
-        ITAERet = DBL_MAX;
+        ITAERet = -1;
     }
     restorePID(p);
     printf("PSO fitness: Iterations = %d, ITAE = %f,  Kp = %f, Ki = %f, Kd = %f\n", i, ITAERet,p->particles[i].position[0], p->particles[i].position[1], p->particles[i].position[2] );
@@ -67,7 +67,7 @@ double fitness(PSO *p, int i, double target, double ITAETime, double PIDSampling
             if (start_time == 0) {
                 start_time = time(NULL);
             } else if (time(NULL) - start_time >= HOLD_SECONDS) {
-                return 1; // 已经稳定超过 HOLD_SECONDS 秒
+                return -1; // 已经稳定超过 HOLD_SECONDS 秒
             }
         } else {
             start_time = 0; // 条件被打破，重新计时
