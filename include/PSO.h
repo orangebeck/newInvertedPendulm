@@ -10,14 +10,16 @@
 #include "control_cl_module.h"
 #include "control_xmt_module.h"
 
-#define NUM_PARTICLES 1   // 粒子数量
+#define NUM_PARTICLES 10  // 粒子数量
 #define DIMENSIONS 3      // 搜索空间的维度
-#define MAX_ITERATIONS 5 // 最大迭代次数
-#define WMAX 1.0              // 惯性权重
+#define MAX_ITERATIONS 20 // 最大迭代次数
+#define WMAX 0.1              // 惯性权重
 #define WMIN 0.1              // 局部权重
 #define C1 1.5             // 自我认知权重
 #define C2 1.5             // 社会认知权重
-#define PSO_INIT_INDEX 0.0001
+#define PSO_INIT_INDEX_P 0.05
+#define PSO_INIT_INDEX_I 0.0001
+#define PSO_INIT_INDEX_D 5
 #define HOLD_SECONDS 5
 
 typedef struct {

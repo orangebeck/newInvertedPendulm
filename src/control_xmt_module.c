@@ -196,7 +196,7 @@ void *PSOControlThread(void *arg)
 
         printf("PSOControlThread start\n");
         pso.target = info->foundation_zero;
-        pso.ITAETime = 20.0;
+        pso.ITAETime = 240.0;
         pso.PIDSamplingTime = info->dt;
 
         backupPID(&pso,  &pipeShareDataSt->pid);
