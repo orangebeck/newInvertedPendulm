@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "*.tcc": "c",
-        "time.h": "c"
+        "time.h": "c",
+        "control_cl_module.h": "c"
     }
 }

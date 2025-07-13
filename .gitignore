@@ -1,5 +1,10 @@
 
 .DS_Store
 
-./bin/*
-./build/*
+bin/
+
+build/
+
+data/
+
+.vscode/
