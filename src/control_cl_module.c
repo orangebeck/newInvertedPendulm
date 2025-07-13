@@ -106,15 +106,20 @@ void timer_thread(int signo, siginfo_t *sigInfo, void *context)
         control_cl_module_info *info = (control_cl_module_info *)sigInfo->si_value.sival_ptr;
 
         #ifndef DEBUG_MODE
-            res = CL_output_measure_value(buf, value, out1);
-            write(info->fd, buf, res);
-            res = read(info->fd, buf, 1024);
-            CL_ret_data(buf);
+            int32_t values[8] = {0};
+            size_t read_len = 0;
+            err = capaNCDT_read_measurements(&data_handle, values, &read_len);
+            if (err == CAPA_OK) {
+                printf("Channel %d: %d ", 1, values[1]);
+                printf("distance %.4f\n", (values[1] / 16777215.0f) * 500.0f);
+            } else {
+                printf("Failed to read measurements: %d\n", err);
+            }
         #endif
 
         pthread_mutex_lock(&info->mutex);
         #ifndef DEBUG_MODE
-            info->clData = CL_decode_value(buf);
+            info->clData = (values[1] / 16777215.0f) * 500.0f /1000.0f;
         #else
             info->clData = (double)(rand() % 1000) / 100000.0;
         #endif
@@ -192,18 +197,59 @@ timer_t signal_init(control_cl_module_info *info)
     return timer_id;
 }
 
+
+void InitCapaNCDT()
+{
+    // 设置控制器信息
+    const char *sensor_ip = "192.168.1.150";
+    uint16_t ctrl_port = 23;
+    uint16_t data_port = 10001;
+
+    printf("Connecting to controller...\n");
+    err = capaNCDT_connect(&ctrl_handle, sensor_ip, ctrl_port);
+    if (err != CAPA_OK) {
+        printf("Failed to connect to controller: %d\n", err);
+        return 1;
+    }
+
+    capaNCDT_get_channel_info(&ctrl_handle, 1, &channel_info[0]);
+    printf("Channel 1 Info:\n");
+    printf("  Article No: %s\n", channel_info[0].article_no);
+    printf("  Name: %s\n", channel_info[0].name);
+    printf("  Serial No: %s\n", channel_info[0].serial_no);
+    printf("  Offset: %.2f\n", channel_info[0].offset);
+    printf("  Range: %.2f\n", channel_info[0].range);
+    printf("  Unit: %s\n", channel_info[0].unit);
+    printf("  Data Type: %d\n", channel_info[0].data_type);
+
+    capaNCDT_set_trigger_mode(&ctrl_handle, CAPA_TRIGGER_CONTINUOUS);
+
+
+
+    printf("Connecting to data port...\n");
+    err = capaNCDT_connect(&data_handle, sensor_ip, data_port);
+    if (err != CAPA_OK) {
+        printf("Failed to connect to data port: %d\n", err);
+        capaNCDT_disconnect(&ctrl_handle);
+        return 1;
+    }
+}
+
 void *clReceiveInputThread(void *arg)
 {
     control_cl_module_info *info = (control_cl_module_info *)arg;
     timer_t timeHandler;
     struct termios termios_tty;
 
-    #ifndef DEBUG_MODE
-    char *clTtyPath = "/dev/ttySTM1";
-    info->fd = fd_init(clTtyPath);
-    clConfigTty(info->fd, &termios_tty);
-    CL_init(info->fd);
-    #endif
+    // #ifndef DEBUG_MODE
+    // char *clTtyPath = "/dev/ttySTM1";
+    // info->fd = fd_init(clTtyPath);
+    // clConfigTty(info->fd, &termios_tty);
+    // CL_init(info->fd);
+    // #endif
+
+    InitCapaNCDT();
+
     
     timeHandler = signal_init(info);
 
@@ -212,7 +258,10 @@ void *clReceiveInputThread(void *arg)
     pthread_mutex_unlock(&pipeShareDataSt->stop_mutex);
 
     #ifndef DEBUG_MODE
-    stopThread(info->fd);
+    // stopThread(info->fd);
+
+    capaNCDT_disconnect(&data_handle);
+    capaNCDT_disconnect(&ctrl_handle);
     #endif
 
     timer_delete(timeHandler);

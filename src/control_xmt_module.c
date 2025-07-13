@@ -230,9 +230,9 @@ void *PIDControlThread(void *arg)
     cycleBuffer* cb = initCycleBuffer(1000);
 
     #ifndef DEBUG_MODE
-        info->fd = xmtfd_init(default_path);
-        config_tty(info->fd, &termios_tty);
-        res = config_xmt(info->fd, buf, &xmt_data_ins);
+        // info->fd = xmtfd_init(default_path);
+        // config_tty(info->fd, &termios_tty);
+        // res = config_xmt(info->fd, buf, &xmt_data_ins);
     #endif
 
     if (res < 0) goto configErr;
@@ -240,9 +240,9 @@ void *PIDControlThread(void *arg)
     pipeShareDataSt->send_xmt_command(pipeShareDataSt,1);
 
     #ifndef DEBUG_MODE
-        xmt_numtodata(xmt_data_ins, 0, 0, XMT_OFFSET);
-        res = xmt_datainlist(xmt_data_ins, buf);
-        write(info->fd, buf, res);
+        // xmt_numtodata(xmt_data_ins, 0, 0, XMT_OFFSET);
+        // res = xmt_datainlist(xmt_data_ins, buf);
+        // write(info->fd, buf, res);
     #endif
 
     double tmp =0;
@@ -252,9 +252,12 @@ void *PIDControlThread(void *arg)
         pthread_mutex_lock(&control_cl_module_infoSt->mutex);
         pthread_cond_wait(&control_cl_module_infoSt->cond, &control_cl_module_infoSt->mutex); 
         before_filter = control_cl_module_infoSt->clData;
+        printf("capa Data ch1: %f\n", before_filter);
         pthread_mutex_unlock(&control_cl_module_infoSt->mutex);
 
         before_filter = firFilterProcess(before_filter);
+
+        
         
         //如果放大倍数测量的时候就设置 pid_status == 0 ， 向xmt发送的消息为设定放大值
         if(pipeShareDataSt->pid_status == 0)
@@ -302,9 +305,9 @@ void *PIDControlThread(void *arg)
             pipeShareDataSt->send_xmt_value(pipeShareDataSt, PIDresult);
         }
         #ifndef DEBUG_MODE
-        xmt_numtodata(xmt_data_ins, 0, 0, PIDresult);
-        res = xmt_datainlist(xmt_data_ins, buf);
-        write(info->fd, buf, res);
+        // xmt_numtodata(xmt_data_ins, 0, 0, PIDresult);
+        // res = xmt_datainlist(xmt_data_ins, buf);
+        // write(info->fd, buf, res);
         #endif
 
         fprintf(fp, "%lf,%lf,%lf,%lf\n", (double)count * SAMPLETIME / 1000.0, before_filter, info->xmt_zero, ( info->foundation_zero)/ info->hangLenth / info->amplify);

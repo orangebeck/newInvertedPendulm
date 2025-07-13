@@ -21,6 +21,7 @@
 #include "error_codes.h"
 #include "cl_hal_driver.h"
 #include "pipe.h"
+#include "capaNCDT.h"
 
 #define SAMPLETIME 50.0
 
@@ -35,6 +36,11 @@ typedef struct control_cl_module_info{
 } control_cl_module_info;
 
 control_cl_module_info *initControlClModule();
+
+capaNCDT_handle_t ctrl_handle;
+capaNCDT_handle_t data_handle;
+capaNCDT_err_t err;
+capaNCDT_channel_info_t channel_info[8];
 
 void *clReceiveInputThread(void *arg);
 
