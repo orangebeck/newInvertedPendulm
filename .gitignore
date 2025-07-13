@@ -1,6 +1,10 @@
 
 .DS_Store
 
-bin
-build
-data
+bin/
+
+build/
+
+data/
+
+.vscode/
