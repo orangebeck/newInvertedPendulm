@@ -35,6 +35,11 @@ int main(int argc, char *argv[])
         return -1;
     }
 
+        if (pthread_create(&pipeThread, NULL, pipeDebugThread, (void *)pipeShareDataSt) != 0) {
+        perror("Thread creation failed");
+        return -1;
+    }
+
     // 等待线程完成
     if (pthread_join(pipeThread, NULL) != 0) {
         perror("Thread join failed");

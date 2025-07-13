@@ -30,8 +30,9 @@ double PID_Compute(PIDController *pid, double setpoint, double measuredValue, do
         pid->integral = integral;
     }
     double derivative = (error - pid->prevError) / dt;
+    double output = 0.0;
 
-    double output = pid->Kp * pid->ratio * error + pid->Ki * pid->ratio * integral + pid->Kd * pid->ratio * derivative;
+        output = measuredValue + pid->Kp *  error + pid->Ki * pid->integral + pid->Kd * derivative;
 
     if (output > pid->outMax) {
         output = pid->outMax;
@@ -44,3 +45,41 @@ double PID_Compute(PIDController *pid, double setpoint, double measuredValue, do
 
     return output;
 }
+
+
+// double PID_Compute(PIDController *pid, double setpoint, double measuredValue, double dt)
+// {
+//     if(pid->Kp == 0 && pid->Ki == 0 && pid->Kd == 0) return 0.0;
+
+//     double error = setpoint - measuredValue;
+
+//     // 限制误差范围（可以根据需要保留或删掉）
+//     if(error > 20 || error < -20) return 0;
+
+//     // 计算增量式 PID 输出增量 Δu
+//     double deltaOutput = 0.0;
+
+//     double diffError = error - pid->prevError; // e(t) - e(t-1)
+//     double secondDiff = error - 2 * pid->prevError + pid->prevPrevError; // e(t) - 2e(t-1) + e(t-2)
+
+//     deltaOutput = pid->Kp * diffError
+//                 + pid->Ki * error * dt
+//                 + pid->Kd * secondDiff / dt;
+
+//     // 加到上一次的输出
+//     double output = pid->lastOutput + deltaOutput;
+
+//     // 限幅
+//     if (output > pid->outMax) {
+//         output = pid->outMax;
+//     } else if (output < -pid->outMax) {
+//         output = -pid->outMax;
+//     }
+
+//     // 更新状态
+//     pid->prevPrevError = pid->prevError;
+//     pid->prevError = error;
+//     pid->lastOutput = output;
+
+//     return output;
+// }

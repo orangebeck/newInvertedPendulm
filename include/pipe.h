@@ -72,6 +72,8 @@ int pipeControl(char *infoList[], pipeShareData *pipeShareDataSt);
 
 void *pipeReceiveInputThread(void *arg);
 
+void *pipeDebugThread(void *arg);
+
 void send_buffer(pipeShareData* data, const char *buffer, int len);
 
 void send_xmt_value_impl(pipeShareData* data, double value);

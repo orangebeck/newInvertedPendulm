@@ -23,11 +23,12 @@ typedef struct control_xmt_module_info{
     int stopThread;
     int fd;
 
-    double foundation_zero;
+    double foundation_zero; //0.15mrad对应的测量值
     double hangLenth;   //mm
     double amplify;
     double dt; //每次采集的时间
     double xmt_zero;
+    double target;   //设定目标值
 } control_xmt_module_info;
 
 #endif
