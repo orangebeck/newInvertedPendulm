@@ -112,7 +112,7 @@ control_xmt_module_info *initControlXmtModule()
     control_xmt_module_info *info = (control_xmt_module_info *)calloc(1, sizeof(control_xmt_module_info));
 
     info->amplify = AMPLIFY;
-    info->foundation_zero = 0;
+    info->foundation_zero = 0.00;
     info->hangLenth = HANG_LENTH;
     info->xmt_zero = XMT_OFFSET;
     info->dt = (float)SAMPLETIME / 1000.0;
@@ -245,6 +245,8 @@ void *PIDControlThread(void *arg)
         write(info->fd, buf, res);
     #endif
 
+    double tmp =0;
+
     while (info->stopThread == 0)
     {
         pthread_mutex_lock(&control_cl_module_infoSt->mutex);
@@ -261,25 +263,27 @@ void *PIDControlThread(void *arg)
         }else if (pipeShareDataSt->pid_status == 1)
         {
             pthread_mutex_lock(&info->mutex);
-            if(before_filter > info->foundation_zero+ pipeShareDataSt->pid.deadzone || before_filter < info->foundation_zero-pipeShareDataSt->pid.deadzone)
-            {
-                pipeShareDataSt->pid.ratio = 1.0;
-                PIDresult = PID_Compute(&pipeShareDataSt->pid, info->foundation_zero / info->hangLenth / info->amplify, before_filter / info->hangLenth / info->amplify, info->dt);
-            }else
-            {
-                pipeShareDataSt->pid.integral = pipeShareDataSt->pid.integral / 2.0;
-                pipeShareDataSt->pid.ratio = 0.5;
-                PIDresult = PID_Compute(&pipeShareDataSt->pid, info->foundation_zero / info->hangLenth / info->amplify, before_filter / info->hangLenth / info->amplify, info->dt);
-            }
+            // if(before_filter > info->foundation_zero+ pipeShareDataSt->pid.deadzone || before_filter < info->foundation_zero-pipeShareDataSt->pid.deadzone)
+            // {
+            //     pipeShareDataSt->pid.ratio = 1.0;
+                PIDresult = PID_Compute(&pipeShareDataSt->pid, (info->target - info->foundation_zero )/ info->hangLenth / info->amplify, (before_filter - info->foundation_zero )/ info->hangLenth / info->amplify, info->dt);
+            // }else
+            // {
+            //     pipeShareDataSt->pid.integral = pipeShareDataSt->pid.integral / 2.0;
+            //     pipeShareDataSt->pid.ratio = 0.5;
+            //     PIDresult = PID_Compute(&pipeShareDataSt->pid, info->foundation_zero / info->hangLenth / info->amplify, before_filter / info->hangLenth / info->amplify, info->dt);
+            // }
             pthread_mutex_unlock(&info->mutex);
 
+            tmp = PIDresult;
             PIDresult += info->xmt_zero;
+
             if(PIDresult >= 0.35)
             {
                 PIDresult = 0.35;
-            }else if (PIDresult <= 0)
+            }else if (PIDresult <= 0.195)
             {
-                PIDresult = 0.0;
+                PIDresult =  0.195;
             }
             
             // printf("PID_Compute = %f\n", PIDresult);
@@ -291,8 +295,8 @@ void *PIDControlThread(void *arg)
                 PIDresult = 0.35;
             }
 
-            info->xmt_zero = PIDresult;
-            // printf("PIDresult = %f, averagePIDresult = %f\n", PIDresult, putCycleBuffer(cb, PIDresult)/(double)cb->count);
+        //    info->xmt_zero = PIDresult;
+            // printf("setXMT = %f, PIDresult = %f,error = %f, intergrate = %f\n", PIDresult, tmp, pipeShareDataSt->pid.prevError, pipeShareDataSt->pid.integral);
             pipeShareDataSt->send_pid_error(pipeShareDataSt, pipeShareDataSt->pid.prevError);
             pipeShareDataSt->send_pid_intergrate(pipeShareDataSt, pipeShareDataSt->pid.integral);
             pipeShareDataSt->send_xmt_value(pipeShareDataSt, PIDresult);

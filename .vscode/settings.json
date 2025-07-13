@@ -2,6 +2,11 @@
     "files.associations": {
         "*.tcc": "c",
         "time.h": "c",
+<<<<<<< HEAD
         "control_cl_module.h": "c"
+=======
+        "signal.h": "c",
+        "msg.h": "c"
+>>>>>>> c7066df... 更改PID 逻辑,等待测试
     }
 }

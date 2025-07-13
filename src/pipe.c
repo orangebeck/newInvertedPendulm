@@ -5,6 +5,7 @@ int  stopThreadFlag = 0;
 
 char *send_path = "/home/zhouweijie/pipeToQT";
 char *receive_path = "/home/zhouweijie/pipeToApp";
+char *debug_path = "/home/zhouweijie/Debug";
 
 motor motorList[] = {
     {
@@ -34,7 +35,7 @@ pipeShareData *initPipeShareDataSt(){
     }
     memset(data,0,sizeof(pipeShareData));
 
-    PID_Init(&data->pid, 0, 0, 0, 0.005, 0.1);
+    PID_Init(&data->pid, 0, 0, 0, 0.15, 0.1);
 
     if (pthread_mutex_init(&data->stop_mutex, NULL) != 0) {
         perror("Mutex initialization failed");
@@ -293,10 +294,17 @@ int pipeControl(char *infoList[], pipeShareData *pipeShareDataSt)
         return 0;
     }
 
-    //Zero %f
-    if (strcmp(infoList[0], "Zero") == 0)
+    //Target %f
+    if (strcmp(infoList[0], "Target") == 0)
     {
-        control_xmt_module_infoSt->foundation_zero = atof(infoList[1]);
+        control_xmt_module_infoSt->target= atof(infoList[1]);
+        printf("%s Target = %f\n", __func__, atof(infoList[1]));
+        return 0;
+    }
+
+        if (strcmp(infoList[0], "Zero") == 0)
+    {
+        control_xmt_module_infoSt->foundation_zero= atof(infoList[1]);
         printf("%s Zero = %f\n", __func__, atof(infoList[1]));
         return 0;
     }
@@ -410,6 +418,45 @@ void send_cl_command_impl(struct pipeShareData* data, int mode)
     
     send_buffer(data, buffer, len);
 }
+
+void *pipeDebugThread(void *arg)
+{
+    char buffer[BUFFER_SIZE];
+    char *infoList[MAX_TOKEN];
+    int infoNum = 0;
+    int *result = malloc(sizeof(int));
+    int debug_fd;
+    
+    if (createPipe(debug_path) < 0)
+    {
+        *result = ERROR_PIPE_CREATE;
+        pthread_exit(result);
+    }
+
+        debug_fd = openPipe(debug_path);
+        while (pipeShareDataSt->stopThread == 0)
+        {
+            int len;
+            ssize_t  bytes_read= read(debug_fd, buffer, BUFFER_SIZE);
+            if (bytes_read == -1)
+            {
+                break;
+            }
+            if(buffer[bytes_read-1]  == '\n') buffer[bytes_read-1] = '\0';
+            buffer[bytes_read] = '\0';
+
+            printf("receive %s\n",buffer);
+
+            parseString(buffer, infoList, &infoNum);
+            if (infoNum > 0) pipeControl(infoList, pipeShareDataSt);
+        }
+
+        close(debug_fd);
+        
+        printf("pipeDebugThread exit\n");
+        pthread_exit(NULL);  // 线程退出
+}
+
 
 void *pipeReceiveInputThread(void *arg)
 {

@@ -10,11 +10,11 @@
 #include "control_cl_module.h"
 #include "control_xmt_module.h"
 
-#define NUM_PARTICLES 1   // 粒子数量
+#define NUM_PARTICLES 5  // 粒子数量
 #define DIMENSIONS 3      // 搜索空间的维度
-#define MAX_ITERATIONS 5 // 最大迭代次数
-#define WMAX 1.0              // 惯性权重
-#define WMIN 0.1              // 局部权重
+#define MAX_ITERATIONS 40 // 最大迭代次数
+#define WMAX 0.5              // 惯性权重
+#define WMIN 0.5              // 局部权重
 #define C1 1.5             // 自我认知权重
 #define C2 1.5             // 社会认知权重
 #define PSO_INIT_INDEX 0.0001

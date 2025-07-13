@@ -3,12 +3,15 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 
 typedef struct PIDController {
     double Kp; // 比例增益
     double Ki; // 积分增益
     double Kd; // 微分增益
-    double prevError; // 上一次的误差
+    double prevError;      // e(t-1)
+    double prevPrevError;  // e(t-2)
+    double lastOutput;     // u(t-1)
     double integral; // 误差积分
 
     double outMax; // Maximum output value
