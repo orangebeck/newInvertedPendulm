@@ -303,6 +303,8 @@ void *PIDControlThread(void *arg)
         write(info->fd, buf, res);
         #endif
 
+        pipeShareDataSt->send_xmt_value(pipeShareDataSt, PIDresult);
+
         fprintf(fp, "%lf,%lf,%lf,%lf\n", (double)count * SAMPLETIME / 1000.0, before_filter, info->xmt_zero, ( info->foundation_zero)/ info->hangLenth / info->amplify);
         
         if (count % 100000 == 0 && count != 0)
