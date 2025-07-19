@@ -17,6 +17,9 @@
 #define WMIN 0.5              // 局部权重
 #define C1 1.5             // 自我认知权重
 #define C2 1.5             // 社会认知权重
+#define PSO_INIT_INDEX_P 0.05
+#define PSO_INIT_INDEX_I 0.0001
+#define PSO_INIT_INDEX_D 5
 #define PSO_INIT_INDEX 0.0001
 #define HOLD_SECONDS 5
 

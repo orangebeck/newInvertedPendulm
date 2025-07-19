@@ -16,6 +16,7 @@ ifeq ($(TARGET_ARCH), arm)
 endif
 	
 $(TARGET): $(OBJ)
+	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 build/%.o: src/%.c
