@@ -81,23 +81,51 @@ int config_xmt(int fd, unsigned char *buf, struct xmt_datapacket **xmt_datapacke
     xmt_ocloop(*xmt_datapacket, 'C', 0);
     ret = xmt_datainlist(*xmt_datapacket, buf);
     write(fd, buf, ret);
-    printf("xmt readdisplacement\n");
+    printf("xmt read displacement\n");
     xmt_read_displacement(*xmt_datapacket, 0, 0);
     ret = xmt_datainlist(*xmt_datapacket, buf);
     write(fd, buf, ret);
+     int i = 0;
+     printf("send 1     ");
+        for(i  =0; i < ret; i++ )
+        {
+            printf("%02X ", buf[i]);
+        }
+        printf("\n");
     ret = read(fd, buf, 1024);
     if (ret > 0)
     {
+        i = 0;
+        printf("receice 1     ");
+        for(i  =0; i < ret; i++ )
+        {
+            printf("%02X ", buf[i]);
+        }
+        printf("\n");
         xmt_parambuf(buf, *xmt_datapacket);
         xmt_decode_displacement(*xmt_datapacket);
     }
-    printf("xmt readdisplacement\n");
+    printf("xmt read displacement\n");
     xmt_read_displacement(*xmt_datapacket, 1, 0);
     ret = xmt_datainlist(*xmt_datapacket, buf);
+    i = 0;
+     printf("send 2     ");
+        for(i  =0; i < ret; i++ )
+        {
+            printf("%02X ", buf[i]);
+        }
+        printf("\n");
     write(fd, buf, ret);
     ret = read(fd, buf, 1024);
     if (ret > 0)
     {
+                i = 0;
+        printf("receice 2     ");
+        for(i  =0; i < ret; i++ )
+        {
+            printf("%02X ", buf[i]);
+        }
+        printf("\n");
         xmt_parambuf(buf, *xmt_datapacket);
         xmt_decode_displacement(*xmt_datapacket);
     }
@@ -240,9 +268,18 @@ void *PIDControlThread(void *arg)
     pipeShareDataSt->send_xmt_command(pipeShareDataSt,1);
 
     #ifndef DEBUG_MODE
-        xmt_numtodata(xmt_data_ins, 0, 0, XMT_OFFSET);
-        res = xmt_datainlist(xmt_data_ins, buf);
-        write(info->fd, buf, res);
+        // xmt_numtodata(xmt_data_ins, 0, 0, XMT_OFFSET);
+        // res = xmt_datainlist(xmt_data_ins, buf);
+        // int i = 0;
+        // for(i  =0; i < res; i++ )
+        // {
+        //     printf("%02X ", buf[i]);
+        // }
+        // printf("\n");
+        // int debug_ret = write(info->fd, buf, res);
+        // printf("XMT set  X = %f mrad! debug_ret = %d\n", XMT_OFFSET, debug_ret);
+
+        PIDresult = XMT_OFFSET;
     #endif
 
     double tmp =0;
@@ -266,7 +303,12 @@ void *PIDControlThread(void *arg)
             // if(before_filter > info->foundation_zero+ pipeShareDataSt->pid.deadzone || before_filter < info->foundation_zero-pipeShareDataSt->pid.deadzone)
             // {
             //     pipeShareDataSt->pid.ratio = 1.0;
-                PIDresult = PID_Compute(&pipeShareDataSt->pid, (info->target - info->foundation_zero )/ info->hangLenth / info->amplify, (before_filter - info->foundation_zero )/ info->hangLenth / info->amplify, info->dt);
+                float set_zero = 0.3985;
+                info->foundation_zero = set_zero;
+                double now  = (before_filter - info->foundation_zero )/ info->hangLenth / info->amplify;
+                double target = (info->target - info->foundation_zero )/ info->hangLenth / info->amplify;
+                printf("before_filter = %f, set_zero = %f,info->target = %f,  now = %f, target = %f\n", before_filter, set_zero, info->target, now, target);
+                PIDresult = PID_Compute(&pipeShareDataSt->pid, target, now, info->dt);
             // }else
             // {
             //     pipeShareDataSt->pid.integral = pipeShareDataSt->pid.integral / 2.0;
@@ -275,28 +317,21 @@ void *PIDControlThread(void *arg)
             // }
             pthread_mutex_unlock(&info->mutex);
 
-            tmp = PIDresult;
-            PIDresult += info->xmt_zero;
+            printf("PIDresult = %f, now = %f, XMT_OFFSET = %f\n", PIDresult, now, XMT_OFFSET);
+            PIDresult = PIDresult - now + XMT_OFFSET;
 
             if(PIDresult >= 0.35)
             {
                 PIDresult = 0.35;
-            }else if (PIDresult <= 0.195)
+            }else if (PIDresult <= 0.0)
             {
-                PIDresult =  0.195;
+                PIDresult =  0.0;
             }
             
             // printf("PID_Compute = %f\n", PIDresult);
-            if(PIDresult < 0)
-            {
-                PIDresult = 0;
-            }else if(PIDresult > 0.35)
-            {
-                PIDresult = 0.35;
-            }
 
         //    info->xmt_zero = PIDresult;
-            // printf("setXMT = %f, PIDresult = %f,error = %f, intergrate = %f\n", PIDresult, tmp, pipeShareDataSt->pid.prevError, pipeShareDataSt->pid.integral);
+            printf("setXMT = %f, PIDresult = %f,error = %f, intergrate = %f\n", PIDresult, tmp, pipeShareDataSt->pid.prevError, pipeShareDataSt->pid.integral);
             pipeShareDataSt->send_pid_error(pipeShareDataSt, pipeShareDataSt->pid.prevError);
             pipeShareDataSt->send_pid_intergrate(pipeShareDataSt, pipeShareDataSt->pid.integral);
             pipeShareDataSt->send_xmt_value(pipeShareDataSt, PIDresult);
@@ -304,6 +339,7 @@ void *PIDControlThread(void *arg)
         #ifndef DEBUG_MODE
         xmt_numtodata(xmt_data_ins, 0, 0, PIDresult);
         res = xmt_datainlist(xmt_data_ins, buf);
+        // printf("xmt send data = %f \n", PIDresult);
         write(info->fd, buf, res);
         #endif
 

@@ -29,6 +29,7 @@ int motor_fd;
 
 pipeShareData *initPipeShareDataSt(){
     pipeShareData *data = (pipeShareData *)malloc(sizeof(pipeShareData));
+
     if (data == NULL) {
         perror("Failed to allocate memory for pipeShareData");
         return NULL;
@@ -36,6 +37,9 @@ pipeShareData *initPipeShareDataSt(){
     memset(data,0,sizeof(pipeShareData));
 
     PID_Init(&data->pid, 0, 0, 0, 0.15, 0.1);
+
+    data->pid_status = 0;
+    data->amplify_set = 0.15;
 
     if (pthread_mutex_init(&data->stop_mutex, NULL) != 0) {
         perror("Mutex initialization failed");
@@ -302,7 +306,7 @@ int pipeControl(char *infoList[], pipeShareData *pipeShareDataSt)
         return 0;
     }
 
-        if (strcmp(infoList[0], "Zero") == 0)
+    if (strcmp(infoList[0], "Zero") == 0)
     {
         control_xmt_module_infoSt->foundation_zero= atof(infoList[1]);
         printf("%s Zero = %f\n", __func__, atof(infoList[1]));
