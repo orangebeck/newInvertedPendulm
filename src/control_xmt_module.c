@@ -1,5 +1,7 @@
 #include "control_xmt_module.h"
 
+#include "pend_ctrl.h"
+
 void config_tty(int fd, struct termios *termios)
 {
     // 清空串口接收缓冲区
@@ -284,6 +286,25 @@ void *PIDControlThread(void *arg)
 
     double tmp =0;
 
+
+    //临时实验 前馈+PID
+    DeviceInfo deviceInfo = {
+        .foundation_zero = 0.39, //mm
+        .target = 0.39,
+        .dt = 0.05,
+        .hangLenth = 258,
+        .amplify = 14.0,
+    };
+
+    CtrlParams ctrlParams;
+    Ctrl_GetDefaultParams(0.05, &ctrlParams);
+
+    CtrlState ctrlState;
+    Ctrl_Init(&ctrlState);
+
+    pipeShareDataSt->pid_status = 1; //模拟的时候直接进入pid状态
+
+
     while (info->stopThread == 0)
     {
         pthread_mutex_lock(&control_cl_module_infoSt->mutex);
@@ -300,41 +321,15 @@ void *PIDControlThread(void *arg)
         }else if (pipeShareDataSt->pid_status == 1)
         {
             pthread_mutex_lock(&info->mutex);
-            // if(before_filter > info->foundation_zero+ pipeShareDataSt->pid.deadzone || before_filter < info->foundation_zero-pipeShareDataSt->pid.deadzone)
-            // {
-            //     pipeShareDataSt->pid.ratio = 1.0;
-                float set_zero = 0.3985;
-                info->foundation_zero = set_zero;
-                double now  = (before_filter - info->foundation_zero )/ info->hangLenth / info->amplify;
-                double target = (info->target - info->foundation_zero )/ info->hangLenth / info->amplify;
-                printf("before_filter = %f, set_zero = %f,info->target = %f,  now = %f, target = %f\n", before_filter, set_zero, info->target, now, target);
-                PIDresult = PID_Compute(&pipeShareDataSt->pid, target, now, info->dt);
-            // }else
-            // {
-            //     pipeShareDataSt->pid.integral = pipeShareDataSt->pid.integral / 2.0;
-            //     pipeShareDataSt->pid.ratio = 0.5;
-            //     PIDresult = PID_Compute(&pipeShareDataSt->pid, info->foundation_zero / info->hangLenth / info->amplify, before_filter / info->hangLenth / info->amplify, info->dt);
-            // }
-            pthread_mutex_unlock(&info->mutex);
+            ctrlParams.Kp = pipeShareDataSt->pid.Kp;
+            ctrlParams.Ki = pipeShareDataSt->pid.Ki;
+            ctrlParams.Kd = pipeShareDataSt->pid.Kd;
 
-            printf("PIDresult = %f, now = %f, XMT_OFFSET = %f\n", PIDresult, now, XMT_OFFSET);
-            PIDresult = PIDresult - now + XMT_OFFSET;
+            PIDresult = 1000.0 * Controller_Step(before_filter, &deviceInfo, &ctrlParams, &ctrlState, XMT_OFFSET, -1); 
 
-            if(PIDresult >= 0.35)
-            {
-                PIDresult = 0.35;
-            }else if (PIDresult <= 0.0)
-            {
-                PIDresult =  0.0;
-            }
-            
-            // printf("PID_Compute = %f\n", PIDresult);
-
-        //    info->xmt_zero = PIDresult;
-            printf("setXMT = %f, PIDresult = %f,error = %f, intergrate = %f\n", PIDresult, tmp, pipeShareDataSt->pid.prevError, pipeShareDataSt->pid.integral);
-            pipeShareDataSt->send_pid_error(pipeShareDataSt, pipeShareDataSt->pid.prevError);
-            pipeShareDataSt->send_pid_intergrate(pipeShareDataSt, pipeShareDataSt->pid.integral);
-            pipeShareDataSt->send_xmt_value(pipeShareDataSt, PIDresult);
+            // pipeShareDataSt->send_pid_error(pipeShareDataSt, pipeShareDataSt->pid.prevError);
+            // pipeShareDataSt->send_pid_intergrate(pipeShareDataSt, pipeShareDataSt->pid.integral);
+            // pipeShareDataSt->send_xmt_value(pipeShareDataSt, PIDresult);
         }
         #ifndef DEBUG_MODE
         xmt_numtodata(xmt_data_ins, 0, 0, PIDresult);
