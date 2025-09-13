@@ -17,23 +17,23 @@ static inline double lpf_step(double x, double state, double dt, double T)
 void Ctrl_GetDefaultParams(double dt, CtrlParams* p)
 {
     p->alpha0_rad     = 0.15;  // 0.15 mrad
-    p->G_mm_per_rad   = 3600.0;
+    p->G_mm_per_rad   = 3.80;
 
     /* 起步增益：稳妥为主（可现场小步调） */
-    p->Kp   = 6e-4;   // rad/mm
-    p->Kd   = 3e-3;   // rad/(mm/s)
-    p->Ki   = 2e-5;   // rad/(mm*s)
+    p->Kp   = 6e-1;   // mrad/mm
+    p->Kd   = 3.0;   // mrad/(mm/s)
+    p->Ki   = 2e-2;   // mrad/(mm*s)
     p->beta = 0.4;
 
     /* 滤波：20Hz 下建议慢一些，防激振 */
-    p->tau_d = 0.30;  // s
+    p->tau_d = 0.50;  // s
     p->Tsp1  = 1.0;   // s
     p->Tsp2  = 1.0;   // s
 
     /* 物理限制与抗饱和 */
     p->alpha_min  = 0.0;        // 若允许负方向，改为 -0.3e-3
-    p->alpha_max  = 0.3e-3;     // 0.3 mrad
-    p->slew_rate  = 0.0006;     // rad/s（可设 0 关闭）
+    p->alpha_max  = 0.3;     // 0.3 mrad
+    p->slew_rate  = 0.06;     // mrad/s（可设 0 关闭）
     p->Kaw        = 0.2;        // ~ (5~10)*Ki 比例量级
 
     /* 捕获→跟踪（按需要用；否则不触发也没关系） */
@@ -51,7 +51,7 @@ void Ctrl_Init(CtrlState* s)
     s->dy_f = 0.0;
     s->I_state = 0.0;
     s->alpha_prev = 0.0;
-    s->mode = CTRL_CAPTURE;   // 默认上电先捕获/抑振
+    s->mode = CTRL_TRACK;   // 默认上电先捕获/抑振
     s->dwell_acc = 0.0;
     s->last_P = s->last_D = s->last_I = s->last_FF = s->last_u_unsat = 0.0;
     s->initialized = false;
@@ -84,40 +84,69 @@ double Controller_Step(double before_filter_mm,
     s->sp2 = lpf_step(s->sp1,       s->sp2, dt, p->Tsp2);
     const double r_mm = s->sp2 - info->foundation_zero;
 
-    /* 3) D-on-measurement：对测量做速度估计（低通微分） */
-    const double dy_raw = (before_filter_mm - s->y_prev) / dt;
-    s->y_prev = before_filter_mm;
-    s->dy_f = (p->tau_d > 0.0) ? lpf_step(dy_raw, s->dy_f, dt, p->tau_d) : dy_raw;
-
     /* 4) 误差构造：P 用加权设定值，I 用完整误差，D 只看测量速度 */
     const double eP = positive_nagtive_mode*(p->beta * r_mm - y_mm);  // mm
     const double eI = positive_nagtive_mode*(r_mm - y_mm);            // mm
+
+    /* 3) D-on-measurement：对测量做速度估计（低通微分） */
+    if(eP < 0.001 && eP > -0.001)
+    {
+        const double dy_raw = (before_filter_mm - s->y_prev) / dt;
+        s->y_prev = before_filter_mm;
+        s->dy_f = (p->tau_d > 0.0) ? lpf_step(dy_raw, s->dy_f, dt, p->tau_d * 2) : dy_raw;
+    }else
+    {
+        const double dy_raw = (before_filter_mm - s->y_prev) / dt;
+        s->y_prev = before_filter_mm;
+        s->dy_f = (p->tau_d > 0.0) ? lpf_step(dy_raw, s->dy_f, dt, p->tau_d) : dy_raw;
+    }
 
     /* 5) 前馈：α_ff = α0 + (1/G) * r_mm */
     const double invG = 1.0 / p->G_mm_per_rad;
     const double alpha_ff = p->alpha0_rad + positive_nagtive_mode * invG * r_mm;
 
+    double D = 0.0;
     /* 6) PD + 慢 I（单位直接输出 rad） */
+    if(eP < 0.001 && eP > -0.001)
+    {
+        D = - positive_nagtive_mode * p->Kd * s->dy_f*0.05;   // rad（抑制速度）
+    }else
+    {
+        D = - positive_nagtive_mode * p->Kd * s->dy_f;   // rad（抑制速度）
+    }
     const double P = p->Kp * eP;          // rad
-    const double D = - positive_nagtive_mode * p->Kd * s->dy_f;   // rad（抑制速度）
+
     /* 积分器（只在 TRACK 模式下积累） */
     double I = 0.0;
-    if (s->mode == CTRL_TRACK && p->Ki > 0.0) {
+    if (s->mode == CTRL_TRACK ) {
         s->I_state += p->Ki * eI * dt;   // rad
         I = s->I_state;
     }
 
     /* 7) 未饱和输出 */
-    const double u_unsat = alpha_ff + P + D + I + XMT_OFFSET_rad;
 
+    const double u_unsat = alpha_ff + P + D + I ;
+    printf("s->dy_f = %f, D = %f , eI = %f, s->I_state= %f,  I = %f, u_unsat = %f", s->dy_f, D, eI, s->I_state, I, u_unsat);
     /* 8) 限幅 + 斜率限幅 */
     double alpha_cmd = CLAMP(u_unsat, p->alpha_min, p->alpha_max);
-    if (p->slew_rate > 0.0) {
-        const double dmax = p->slew_rate * dt;
-        const double lo = s->alpha_prev - dmax;
-        const double hi = s->alpha_prev + dmax;
-        alpha_cmd = CLAMP(alpha_cmd, lo, hi);
+
+    if(eP < 0.001 && eP > -0.001)
+    {
+        if (p->slew_rate > 0.0) {
+            const double dmax = 0.0005 * dt;
+            const double lo = s->alpha_prev - dmax;
+            const double hi = s->alpha_prev + dmax;
+            alpha_cmd = CLAMP(alpha_cmd, lo, hi);
+        }
+    }else{
+        if (p->slew_rate > 0.0) {
+            const double dmax = p->slew_rate * dt;
+            const double lo = s->alpha_prev - dmax;
+            const double hi = s->alpha_prev + dmax;
+            alpha_cmd = CLAMP(alpha_cmd, lo, hi);
+        }
     }
+
 
     /* 9) 抗积分饱和（back-calculation） */
     if (s->mode == CTRL_TRACK && p->Ki > 0.0 && p->Kaw > 0.0) {
@@ -132,7 +161,7 @@ double Controller_Step(double before_filter_mm,
     if (s->mode == CTRL_CAPTURE && s->dwell_acc >= p->dwell_s) {
         s->mode = CTRL_TRACK;
         /* 无扰切换：I = alpha_cmd - (P + D + alpha_ff + XMT_OFFSET) */
-        s->I_state = alpha_cmd - (P + D + alpha_ff + XMT_OFFSET_rad);
+        s->I_state = alpha_cmd - (P + D + alpha_ff );
     }
 
     /* 记录与返回 */

@@ -13,6 +13,7 @@ OBJ = $(patsubst src/%, build/%, $(SRC:.c=.o))
 all: $(TARGET)
 ifeq ($(TARGET_ARCH), arm)
 	cp ./$(TARGET) ~/workdir/
+	scp ./bin/app debian@192.168.3.86:/home/debian/newPendulum/
 endif
 	
 $(TARGET): $(OBJ)

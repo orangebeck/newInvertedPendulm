@@ -207,7 +207,7 @@ FILE* createSaveFile()
         perror("Error opening file");
         return NULL;
     }
-    fprintf(fp, "count,CL_filter,xmt_control,zero\n");
+    fprintf(fp, "count,Target, Fundation_ZeroCL,xmt,P,I,D,ff\n");
 
 
     return fp;
@@ -289,8 +289,8 @@ void *PIDControlThread(void *arg)
 
     //临时实验 前馈+PID
     DeviceInfo deviceInfo = {
-        .foundation_zero = 0.39, //mm
-        .target = 0.39,
+        .foundation_zero = -0.20, //mm
+        .target = -0.20,
         .dt = 0.05,
         .hangLenth = 258,
         .amplify = 14.0,
@@ -320,17 +320,18 @@ void *PIDControlThread(void *arg)
             PIDresult = pipeShareDataSt->amplify_set;
         }else if (pipeShareDataSt->pid_status == 1)
         {
-            pthread_mutex_lock(&info->mutex);
             ctrlParams.Kp = pipeShareDataSt->pid.Kp;
             ctrlParams.Ki = pipeShareDataSt->pid.Ki;
             ctrlParams.Kd = pipeShareDataSt->pid.Kd;
+            deviceInfo.target = control_xmt_module_infoSt->target;
 
-            PIDresult = 1000.0 * Controller_Step(before_filter, &deviceInfo, &ctrlParams, &ctrlState, XMT_OFFSET, -1); 
+            PIDresult = Controller_Step(before_filter, &deviceInfo, &ctrlParams, &ctrlState, XMT_OFFSET, -1); 
 
             // pipeShareDataSt->send_pid_error(pipeShareDataSt, pipeShareDataSt->pid.prevError);
             // pipeShareDataSt->send_pid_intergrate(pipeShareDataSt, pipeShareDataSt->pid.integral);
             // pipeShareDataSt->send_xmt_value(pipeShareDataSt, PIDresult);
         }
+        printf("PIDresult=%f\n",PIDresult);
         #ifndef DEBUG_MODE
         xmt_numtodata(xmt_data_ins, 0, 0, PIDresult);
         res = xmt_datainlist(xmt_data_ins, buf);
@@ -340,7 +341,15 @@ void *PIDControlThread(void *arg)
 
         pipeShareDataSt->send_xmt_value(pipeShareDataSt, PIDresult);
 
-        fprintf(fp, "%lf,%lf,%lf,%lf\n", (double)count * SAMPLETIME / 1000.0, before_filter, info->xmt_zero, ( info->foundation_zero)/ info->hangLenth / info->amplify);
+        fprintf(fp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf\n",   (double)count * SAMPLETIME/1000.0, 
+                                                                                                        control_xmt_module_infoSt->target, 
+                                                                                                        deviceInfo.foundation_zero,
+                                                                                                        before_filter, 
+                                                                                                        PIDresult, 
+                                                                                                        ctrlState.last_P, 
+                                                                                                        ctrlState.last_I, 
+                                                                                                        ctrlState.last_D, 
+                                                                                                        ctrlState.last_FF);
         
         if (count % 100000 == 0 && count != 0)
         {
