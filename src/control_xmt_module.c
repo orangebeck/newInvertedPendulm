@@ -207,7 +207,7 @@ FILE* createSaveFile()
         perror("Error opening file");
         return NULL;
     }
-    fprintf(fp, "count,Target, Fundation_ZeroCL,xmt,P,I,D,ff\n");
+    fprintf(fp, "Time,Target,Fundation_Zero,dy,CL,xmt,P,I,D,ff\n");
 
 
     return fp;
@@ -342,14 +342,15 @@ void *PIDControlThread(void *arg)
         pipeShareDataSt->send_xmt_value(pipeShareDataSt, PIDresult);
 
         fprintf(fp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf\n",   (double)count * SAMPLETIME/1000.0, 
-                                                                                                        control_xmt_module_infoSt->target, 
-                                                                                                        deviceInfo.foundation_zero,
-                                                                                                        before_filter, 
-                                                                                                        PIDresult, 
-                                                                                                        ctrlState.last_P, 
-                                                                                                        ctrlState.last_I, 
-                                                                                                        ctrlState.last_D, 
-                                                                                                        ctrlState.last_FF);
+                                                                control_xmt_module_infoSt->target, 
+                                                                deviceInfo.foundation_zero,
+                                                                ctrlState.dy_f,
+                                                                before_filter, 
+                                                                PIDresult, 
+                                                                ctrlState.last_P, 
+                                                                ctrlState.last_I, 
+                                                                ctrlState.last_D, 
+                                                                ctrlState.last_FF);
         
         if (count % 100000 == 0 && count != 0)
         {

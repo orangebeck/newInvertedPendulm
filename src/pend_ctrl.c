@@ -89,11 +89,13 @@ double Controller_Step(double before_filter_mm,
     const double eI = positive_nagtive_mode*(r_mm - y_mm);            // mm
 
     /* 3) D-on-measurement：对测量做速度估计（低通微分） */
-    if(eP < 0.001 && eP > -0.001)
+    if(eP < 0.005 && eP > -0.005)
     {
         const double dy_raw = (before_filter_mm - s->y_prev) / dt;
         s->y_prev = before_filter_mm;
-        s->dy_f = (p->tau_d > 0.0) ? lpf_step(dy_raw, s->dy_f, dt, p->tau_d * 2) : dy_raw;
+        s->dy_f = (p->tau_d > 0.0) ? lpf_step(dy_raw, s->dy_f, dt, p->tau_d) : dy_raw; 
+        //在10um波动范围内使用长周期滤波平滑D的波动,直接将p->tau_d设置为10.0
+        // s->dy_f = (p->tau_d > 0.0) ? lpf_step(dy_raw, s->dy_f, dt, 10.0) : dy_raw; 
     }else
     {
         const double dy_raw = (before_filter_mm - s->y_prev) / dt;
@@ -107,9 +109,11 @@ double Controller_Step(double before_filter_mm,
 
     double D = 0.0;
     /* 6) PD + 慢 I（单位直接输出 rad） */
-    if(eP < 0.001 && eP > -0.001)
+    if((eP < 0.003 && eP > -0.003) && (s->dy_f < 0.008 && s->dy_f > -0.008))
     {
-        D = - positive_nagtive_mode * p->Kd * s->dy_f*0.05;   // rad（抑制速度）
+        D = 0.0;   // rad（抑制速度）
+        //如果本if判断里面不能将波动进行抑制就将 114行注释，116行解注释，同时96行注释98行接触注释
+        // D = - positive_nagtive_mode * p->Kd * s->dy_f;   // rad（抑制速度）
     }else
     {
         D = - positive_nagtive_mode * p->Kd * s->dy_f;   // rad（抑制速度）
