@@ -6,6 +6,67 @@
 #define CLAMP(x, lo, hi) ((x) < (lo) ? (lo) : ((x) > (hi) ? (hi) : (x)))
 #endif
 
+#define PI 3.14159265358979323846
+
+// 双二阶巴特沃斯滤波器结构体
+typedef struct {
+    double x1, x2, y1, y2;     // 滤波器状态变量
+    double a0, a1, a2, b1, b2; // 滤波器系数
+} ZeroPhaseFilter;
+
+// 计算巴特沃斯滤波器的系数
+void butterworth_coeff(double cutoff_freq, double sample_rate, ZeroPhaseFilter* filter) {
+    double W0 = 2 * PI * cutoff_freq / sample_rate;  // 截止频率的归一化
+    double cosW0 = cos(W0);
+    double sinW0 = sin(W0);
+    double alpha = sinW0 / 2.0;
+
+    // 根据二阶低通巴特沃斯滤波器设计计算系数
+    double b0 = (1 - cosW0) / 2.0;
+    double b1 = 1 - cosW0;
+    double b2 = (1 - cosW0) / 2.0;
+    double a0 = 1 + alpha;
+    double a1 = -2 * cosW0;
+    double a2 = 1 - alpha;
+
+    // 保存计算得到的系数
+    filter->a0 = b0 / a0;
+    filter->a1 = b1 / a0;
+    filter->a2 = b2 / a0;
+    filter->b1 = a1 / a0;
+    filter->b2 = a2 / a0;
+
+    // 初始化滤波器的状态为零
+    filter->x1 = 0.0;
+    filter->x2 = 0.0;
+    filter->y1 = 0.0;
+    filter->y2 = 0.0;
+}
+
+// 实现双二阶巴特沃斯滤波器（前向+反向滤波器）
+double zero_phase_filter(ZeroPhaseFilter* filter, double input) {
+    // 前向滤波
+    double output = filter->a0 * input + filter->a1 * filter->x1 + filter->a2 * filter->x2
+                    - filter->b1 * filter->y1 - filter->b2 * filter->y2;
+
+    // 更新状态变量
+    filter->x2 = filter->x1;
+    filter->x1 = input;
+    filter->y2 = filter->y1;
+    filter->y1 = output;
+
+    return output;
+}
+
+// 反向滤波（为消除相位延迟，进行反向滤波）
+double reverse_zero_phase_filter(ZeroPhaseFilter* filter, double input) {
+    // 进行反向滤波（前向滤波后再反向滤波）
+    return zero_phase_filter(filter, input);
+}
+
+ZeroPhaseFilter filter;
+
+
 static inline double lpf_step(double x, double state, double dt, double T)
 {
     if (T <= 0.0) return x;
@@ -41,6 +102,12 @@ void Ctrl_GetDefaultParams(double dt, CtrlParams* p)
     p->th_dabs_mms = 0.20;      // mm/s
     p->dwell_s     = 0.50;      // s
 
+    // 设置滤波器的参数
+    double cutoff_freq = 2.0;      // 截止频率 0.5 Hz
+    double sample_rate = 1.0 / dt;     // 采样频率 10 Hz
+
+    butterworth_coeff(cutoff_freq, sample_rate, &filter);
+
     (void)dt; // 当前实现里 tau/滤波常数已直接设定
 }
 
@@ -55,6 +122,8 @@ void Ctrl_Init(CtrlState* s)
     s->dwell_acc = 0.0;
     s->last_P = s->last_D = s->last_I = s->last_FF = s->last_u_unsat = 0.0;
     s->initialized = false;
+
+
 }
 
 double Controller_Step(double before_filter_mm,
@@ -128,7 +197,10 @@ double Controller_Step(double before_filter_mm,
     }
 
     /* 7) 未饱和输出 */
+    double filtered = zero_phase_filter(&filter, D);
 
+        // 反向滤波
+    D = reverse_zero_phase_filter(&filter, filtered);
     const double u_unsat = alpha_ff + P + D + I ;
     printf("s->dy_f = %f, D = %f , eI = %f, s->I_state= %f,  I = %f, u_unsat = %f", s->dy_f, D, eI, s->I_state, I, u_unsat);
     /* 8) 限幅 + 斜率限幅 */
