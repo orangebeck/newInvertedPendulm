@@ -207,7 +207,7 @@ FILE* createSaveFile()
         perror("Error opening file");
         return NULL;
     }
-    fprintf(fp, "Time,Target,Fundation_Zero,dy,CL,xmt,P,I,D,ff\n");
+    fprintf(fp, "Time,Target,Fundation_Zero,dy,CL,xmt,P,I,D,ff,sp2\n");
 
 
     return fp;
@@ -289,8 +289,8 @@ void *PIDControlThread(void *arg)
 
     //临时实验 前馈+PID
     DeviceInfo deviceInfo = {
-        .foundation_zero = -0.20, //mm
-        .target = -0.20,
+        .foundation_zero = -0.0625, //mm
+        .target = -0.0625,
         .dt = 0.05,
         .hangLenth = 258,
         .amplify = 14.0,
@@ -341,7 +341,7 @@ void *PIDControlThread(void *arg)
 
         pipeShareDataSt->send_xmt_value(pipeShareDataSt, PIDresult);
 
-        fprintf(fp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf\n",   (double)count * SAMPLETIME/1000.0, 
+        fprintf(fp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf, %lf\n",   (double)count * SAMPLETIME/1000.0, 
                                                                 control_xmt_module_infoSt->target, 
                                                                 deviceInfo.foundation_zero,
                                                                 ctrlState.dy_f,
@@ -350,7 +350,8 @@ void *PIDControlThread(void *arg)
                                                                 ctrlState.last_P, 
                                                                 ctrlState.last_I, 
                                                                 ctrlState.last_D, 
-                                                                ctrlState.last_FF);
+                                                                ctrlState.last_FF,
+                                                                ctrlState.sp2);
         
         if (count % 100000 == 0 && count != 0)
         {

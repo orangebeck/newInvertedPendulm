@@ -85,11 +85,11 @@ double Controller_Step(double before_filter_mm,
     const double r_mm = s->sp2 - info->foundation_zero;
 
     /* 4) 误差构造：P 用加权设定值，I 用完整误差，D 只看测量速度 */
-    const double eP = positive_nagtive_mode*(p->beta * r_mm - y_mm);  // mm
+    const double eP = positive_nagtive_mode*(p->beta *( r_mm - y_mm));  // mm
     const double eI = positive_nagtive_mode*(r_mm - y_mm);            // mm
 
     /* 3) D-on-measurement：对测量做速度估计（低通微分） */
-    if(eP < 0.005 && eP > -0.005)
+    if((eP < 0.0005 && eP > -0.0005) && (s->dy_f < 0.0015 && s->dy_f > -0.0015))  //现在波动ep和测量之存在很大偏差
     {
         const double dy_raw = (before_filter_mm - s->y_prev) / dt;
         s->y_prev = before_filter_mm;
@@ -109,11 +109,11 @@ double Controller_Step(double before_filter_mm,
 
     double D = 0.0;
     /* 6) PD + 慢 I（单位直接输出 rad） */
-    if((eP < 0.003 && eP > -0.003) && (s->dy_f < 0.008 && s->dy_f > -0.008))
+    if((eP < 0.0005 && eP > -0.0005) && (s->dy_f < 0.0015 && s->dy_f > -0.0015))
     {
-        D = 0.0;   // rad（抑制速度）
+        // D = 0.0;   // rad（抑制速度）
         //如果本if判断里面不能将波动进行抑制就将 114行注释，116行解注释，同时96行注释98行接触注释
-        // D = - positive_nagtive_mode * p->Kd * s->dy_f;   // rad（抑制速度）
+        D = - positive_nagtive_mode * p->Kd * s->dy_f;   // rad（抑制速度）
     }else
     {
         D = - positive_nagtive_mode * p->Kd * s->dy_f;   // rad（抑制速度）
@@ -130,7 +130,7 @@ double Controller_Step(double before_filter_mm,
     /* 7) 未饱和输出 */
 
     const double u_unsat = alpha_ff + P + D + I ;
-    printf("s->dy_f = %f, D = %f , eI = %f, s->I_state= %f,  I = %f, u_unsat = %f", s->dy_f, D, eI, s->I_state, I, u_unsat);
+    printf("dy_f = %f, b*rmm = %f, ymm = %f, eP = %f,D = %f , ", s->dy_f, p->beta * r_mm ,y_mm, eP, D);
     /* 8) 限幅 + 斜率限幅 */
     double alpha_cmd = CLAMP(u_unsat, p->alpha_min, p->alpha_max);
 
