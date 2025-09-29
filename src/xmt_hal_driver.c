@@ -18,7 +18,7 @@ void xmt_parambuf(unsigned char *p, struct xmt_datapacket* xmt_datapacket)
     xmt_datapacket->xmt_head = *p++;
     xmt_datapacket->xmt_addr = *p++;
     ret_len = (int)*p;
-    printf("xmt_len = %d\n",ret_len);
+    LOG(LOG_INFO, "xmt_len = %d\n",ret_len);
     xmt_datapacket->xmt_len = *p++;
     xmt_datapacket->xmt_instruct1 = *p++;
     p++;
@@ -27,7 +27,7 @@ void xmt_parambuf(unsigned char *p, struct xmt_datapacket* xmt_datapacket)
         xmt_datapacket->xmt_data[i-5] = *p++;
     }
     xmt_datapacket->xmt_xor = *p;
-    printf("xmt_xor = %02x\n",*p);
+    LOG(LOG_INFO, "xmt_xor = %02x\n",*p);
     xmt_datapacket->xmt_datalen = ret_len -6;
 }
 
@@ -49,15 +49,15 @@ void xmt_xorcheck(struct xmt_datapacket* xmt_datapacket)
 /*print struct xmt_datapacket content*/
 void xmt_print(struct xmt_datapacket* xmt_datapacket)
 {
-    printf("head %02x %02x %02x %02x %02x data",xmt_datapacket->xmt_head,xmt_datapacket->xmt_addr,xmt_datapacket->xmt_len,xmt_datapacket->xmt_instruct1,xmt_datapacket->xmt_instruct2);
+    LOG(LOG_INFO, "head %02x %02x %02x %02x %02x data",xmt_datapacket->xmt_head,xmt_datapacket->xmt_addr,xmt_datapacket->xmt_len,xmt_datapacket->xmt_instruct1,xmt_datapacket->xmt_instruct2);
     if (xmt_datapacket->xmt_datalen >0)
     {
         for (int i = 0; i < xmt_datapacket->xmt_datalen; i++)
         {
-            printf("%02x ",xmt_datapacket->xmt_data[i]);
+            LOG(LOG_INFO, "%02x ",xmt_datapacket->xmt_data[i]);
         }
     }
-    printf("xor %02x\n",xmt_datapacket->xmt_xor);
+    LOG(LOG_INFO, "xor %02x\n",xmt_datapacket->xmt_xor);
     
 }
 
@@ -230,7 +230,7 @@ void xmt_read_realtime(struct xmt_datapacket* xmt_datapacket, int read_type, int
 
     if (time<0 || time>255)
     {
-        printf("time over range");
+        LOG(LOG_INFO, "time over range");
         exit(EXIT_FAILURE);
     }else
     {
@@ -302,7 +302,7 @@ void xmt_read_ocloop(struct xmt_datapacket* xmt_datapacket, unsigned int channel
         C : close loop*/
 char xmt_dcode_ocloop(struct xmt_datapacket* xmt_datapacket)
 {
-    printf("open close loop= %c\n",xmt_datapacket->xmt_data[1] );
+    LOG(LOG_INFO, "open close loop= %c\n",xmt_datapacket->xmt_data[1] );
     return xmt_datapacket->xmt_data[1];
 }
 

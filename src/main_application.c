@@ -58,7 +58,7 @@ int main(int argc, char *argv[])
     free(control_cl_module_infoSt);
     free(pipeShareDataSt);
     free(control_xmt_module_infoSt);
-    printf("Thread has finished execution.\n");
+    LOG(LOG_INFO, "Thread has finished execution.\n");
 
     return ret;
 }

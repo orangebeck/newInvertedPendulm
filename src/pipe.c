@@ -115,12 +115,12 @@ int createPipe(char *path)
             perror("mkfifo");
             return ERROR_PIPE_CREATE;
         }
-        printf("Named pipe created at %s\n", path);
+        LOG(LOG_INFO, "Named pipe created at %s\n", path);
         return SUCCESS;
     }
     else
     {
-        printf("Named pipe already exists at %s\n", path);
+        LOG(LOG_INFO, "Named pipe already exists at %s\n", path);
         return SUCCESS;
     }
 }
@@ -132,12 +132,12 @@ int openPipe(char *path)
     if (fd == -1)
     {
         perror("open");
-        printf("fail to open\n");
+        LOG(LOG_ERROR, "fail to open\n");
         return ERROR_PIPE_OPEN;
     }
     // while (read(fd, buffer, BUFFER_SIZE) > 0); // 清空缓冲区 这里面存在问题
     
-    printf("Named pipe opened at %s, fd = %d\n", path, fd);
+    LOG(LOG_INFO, "Named pipe opened at %s, fd = %d\n", path, fd);
     return fd;
 }
 
@@ -173,17 +173,17 @@ int pipeControl(char *infoList[], pipeShareData *pipeShareDataSt)
             if (strcmp(infoList[i], "P") == 0)
             {
                 pipeShareDataSt->cpid.Kp = atof(infoList[i + 1]);
-                printf("%s PID P = %f\n", __func__, atof(infoList[i + 1]));
+                LOG(LOG_INFO, "%s PID P = %f\n", __func__, atof(infoList[i + 1]));
             }
             else if (strcmp(infoList[i], "I") == 0)
             {
                 pipeShareDataSt->cpid.Ki = atof(infoList[i + 1]);
-                printf("%s PID I = %f\n", __func__, atof(infoList[i + 1]));
+                LOG(LOG_INFO, "%s PID I = %f\n", __func__, atof(infoList[i + 1]));
             }
             else if (strcmp(infoList[i], "D") == 0)
             {
                 pipeShareDataSt->cpid.Kd = atof(infoList[i + 1]);
-                printf("%s PID D = %f\n", __func__, atof(infoList[i + 1]));
+                LOG(LOG_INFO, "%s PID D = %f\n", __func__, atof(infoList[i + 1]));
             }
             pthread_mutex_unlock(&pipeShareDataSt->stop_mutex);
         }
@@ -197,17 +197,17 @@ int pipeControl(char *infoList[], pipeShareData *pipeShareDataSt)
             if (strcmp(infoList[i], "z") == 0)
             {
                 control_xmt_module_infoSt->foundation_zero = atof(infoList[i + 1]);
-                printf("%s control_xmt_module_infoSt->foundation_zero = %f\n", __func__, control_xmt_module_infoSt->foundation_zero);
+                LOG(LOG_INFO, "%s control_xmt_module_infoSt->foundation_zero = %f\n", __func__, control_xmt_module_infoSt->foundation_zero);
             }
             else if (strcmp(infoList[i], "h") == 0)
             {
                 control_xmt_module_infoSt->hangLenth = atof(infoList[i + 1]);
-                printf("%s control_xmt_module_infoSt->hangLenth = %f\n", __func__, control_xmt_module_infoSt->hangLenth);
+                LOG(LOG_INFO, "%s control_xmt_module_infoSt->hangLenth = %f\n", __func__, control_xmt_module_infoSt->hangLenth);
             }
             else if (strcmp(infoList[i], "a") == 0)
             {
                 control_xmt_module_infoSt->amplify = atof(infoList[i + 1]) / 1000.0;
-                printf("%s control_xmt_module_infoSt->amplify = %f\n", __func__, control_xmt_module_infoSt->amplify );
+                LOG(LOG_INFO, "%s control_xmt_module_infoSt->amplify = %f\n", __func__, control_xmt_module_infoSt->amplify );
             }
             pthread_mutex_unlock(&control_xmt_module_infoSt->mutex);
         }
@@ -223,7 +223,7 @@ int pipeControl(char *infoList[], pipeShareData *pipeShareDataSt)
                 pthread_mutex_lock(&pipeShareDataSt->stop_mutex);
                 pipeShareDataSt->amplify_set = atof(infoList[i + 1]);
                 pipeShareDataSt->pid_status = 0;
-                printf("%s pipeShareDataSt->amplify_set = %f\n", __func__, pipeShareDataSt->amplify_set);
+                LOG(LOG_INFO, "%s pipeShareDataSt->amplify_set = %f\n", __func__, pipeShareDataSt->amplify_set);
                 pthread_mutex_unlock(&pipeShareDataSt->stop_mutex);
             }
             
@@ -231,7 +231,7 @@ int pipeControl(char *infoList[], pipeShareData *pipeShareDataSt)
             {
                 pthread_mutex_lock(&control_xmt_module_infoSt->mutex);
                 control_xmt_module_infoSt->amplify = atof(infoList[i + 1]);
-                printf("%scontrol_xmt_module_infoSt->amplify  = %f\n", __func__, control_xmt_module_infoSt->amplify );
+                LOG(LOG_INFO, "%scontrol_xmt_module_infoSt->amplify  = %f\n", __func__, control_xmt_module_infoSt->amplify );
                 pthread_mutex_unlock(&control_xmt_module_infoSt->mutex);
             }
            
@@ -250,7 +250,7 @@ int pipeControl(char *infoList[], pipeShareData *pipeShareDataSt)
                 #ifndef DEBUG_MODE
                 ioctl(motor_fd, MOTOR_IOCTL_CMD_SET_VALUE, &motorList[0].motor_ctrl);
                 #endif
-                printf("%s motorList WEIGHT = %s\n", __func__, infoList[i + 1] );
+                LOG(LOG_INFO, "%s motorList WEIGHT = %s\n", __func__, infoList[i + 1] );
                 
             }
             else if (strcmp(infoList[i], "LASER") == 0)
@@ -261,7 +261,7 @@ int pipeControl(char *infoList[], pipeShareData *pipeShareDataSt)
                 #ifndef DEBUG_MODE
                 ioctl(motor_fd, MOTOR_IOCTL_CMD_SET_VALUE, &motorList[1].motor_ctrl);
                 #endif
-                printf("%s motorList LASER = %s \n", __func__, infoList[i + 1]);
+                LOG(LOG_INFO, "%s motorList LASER = %s \n", __func__, infoList[i + 1]);
             }
         }
         return 0;
@@ -269,7 +269,7 @@ int pipeControl(char *infoList[], pipeShareData *pipeShareDataSt)
     if (strcmp(infoList[0], "PSO") == 0)
     {
         pthread_cond_broadcast(&pipeShareDataSt->pso_cond);
-        printf("%s PSO = %s\n", __func__, infoList[0]);
+        LOG(LOG_INFO, "%s PSO = %s\n", __func__, infoList[0]);
         return 0;
     }
     if (strcmp(infoList[0], "KILL") == 0)
@@ -295,7 +295,7 @@ int pipeControl(char *infoList[], pipeShareData *pipeShareDataSt)
     if (strcmp(infoList[0], "Dead") == 0)
     {
         pipeShareDataSt->pid.deadzone = atof(infoList[1]);
-        printf("%s Dead = %f\n", __func__, atof(infoList[1]));
+        LOG(LOG_INFO, "%s Dead = %f\n", __func__, atof(infoList[1]));
         return 0;
     }
 
@@ -303,14 +303,14 @@ int pipeControl(char *infoList[], pipeShareData *pipeShareDataSt)
     if (strcmp(infoList[0], "Target") == 0)
     {
         control_xmt_module_infoSt->target= atof(infoList[1]);
-        printf("%s Target = %f\n", __func__, atof(infoList[1]));
+        LOG(LOG_INFO, "%s Target = %f\n", __func__, atof(infoList[1]));
         return 0;
     }
 
     if (strcmp(infoList[0], "Zero") == 0)
     {
         control_xmt_module_infoSt->foundation_zero= atof(infoList[1]);
-        printf("%s Zero = %f\n", __func__, atof(infoList[1]));
+        LOG(LOG_INFO, "%s Zero = %f\n", __func__, atof(infoList[1]));
         return 0;
     }
 
@@ -450,7 +450,7 @@ void *pipeDebugThread(void *arg)
             if(buffer[bytes_read-1]  == '\n') buffer[bytes_read-1] = '\0';
             buffer[bytes_read] = '\0';
 
-            printf("receive %s\n",buffer);
+            LOG(LOG_INFO, "receive %s\n",buffer);
 
             parseString(buffer, infoList, &infoNum);
             if (infoNum > 0) pipeControl(infoList, pipeShareDataSt);
@@ -458,7 +458,7 @@ void *pipeDebugThread(void *arg)
 
         close(debug_fd);
         
-        printf("pipeDebugThread exit\n");
+        LOG(LOG_INFO, "pipeDebugThread exit\n");
         pthread_exit(NULL);  // 线程退出
 }
 
@@ -501,7 +501,7 @@ void *pipeReceiveInputThread(void *arg)
     pthread_mutex_unlock(&pipeShareDataSt->start_mutex);
     pipeShareDataSt->start_flag = 1;
 
-    printf("%s start to pipe\n", __func__);
+    LOG(LOG_INFO, "%s start to pipe\n", __func__);
 
     while (pipeShareDataSt->stopThread == 0)
     {
@@ -515,16 +515,16 @@ void *pipeReceiveInputThread(void *arg)
         if(buffer[bytes_read-1]  == '\n') buffer[bytes_read-1] = '\0';
         buffer[bytes_read] = '\0';
 
-        printf("receive %s\n",buffer);
+        LOG(LOG_INFO, "receive %s\n",buffer);
 
         parseString(buffer, infoList, &infoNum);
         if (infoNum > 0) pipeControl(infoList, pipeShareDataSt);
-        // printf("Kp: %f, Ki: %f, Kd: %f\n", pipeShareDataSt->pid.Kp, pipeShareDataSt->pid.Ki, pipeShareDataSt->pid.Kd);
+        // LOG(LOG_INFO, "Kp: %f, Ki: %f, Kd: %f\n", pipeShareDataSt->pid.Kp, pipeShareDataSt->pid.Ki, pipeShareDataSt->pid.Kd);
     }
 
     close(motor_fd);
     close(fd);
     
-    printf("thread exit\n");
+    LOG(LOG_INFO, "thread exit\n");
     pthread_exit(NULL);  // 线程退出
 }

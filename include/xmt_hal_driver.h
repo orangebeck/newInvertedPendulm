@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include "log.h"
 
 #define SENDDATASIZE 1024
 
