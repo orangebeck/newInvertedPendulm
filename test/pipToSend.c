@@ -7,6 +7,7 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include "log.h"
 
 #define PIPE_NAME "/home/zhouweijie/pipeToApp"  // \u7ba1\u9053\u8def\u5f84
 #define PERIOD 20.0   // \u4e00\u4e2a\u5468\u671f 20 \u79d2
@@ -21,9 +22,9 @@ int main() {
         exit(1);
     }
 
-    printf("pipe_fd = %d\n", pipe_fd);
+    LOG(LOG_INFO, "pipe_fd = %d\n", pipe_fd);
 
-    printf("Pipe opened. Sending sine wave data...\n");
+    LOG(LOG_INFO, "Pipe opened. Sending sine wave data...\n");
 
 
     const char *message0 = "XMT Ready\n";
@@ -49,7 +50,7 @@ int main() {
             exit(1);
         }
 
-        printf("Written: %s", buffer);
+        LOG(LOG_INFO, "Written: %s", buffer);
         usleep(1000);
        char buffer1[64];
         snprintf(buffer1, sizeof(buffer1), "XMT %.4f\n", -value*1.5);
@@ -59,7 +60,7 @@ int main() {
             exit(1);
         }
 
-        printf("Written: %s", buffer1);
+        LOG(LOG_INFO, "Written: %s", buffer1);
 
         t++;
         sleep(1);  // \u6bcf\u79d2\u53d1\u9001\u4e00\u6b21

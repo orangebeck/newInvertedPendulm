@@ -5,6 +5,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <string.h>
+#include "log.h"
 
 #define PIPE_NAME "/home/zhouweijie/pipeToQT"  // \u7ba1\u9053\u6587\u4ef6\u8def\u5f84
 
@@ -25,7 +26,7 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
-    printf("fd = %d\n", fd);
+    LOG(LOG_INFO, "fd = %d\n", fd);
 
     // \u6301\u7eed\u8bfb\u53d6\u7ba1\u9053\u4e2d\u7684\u6570\u636e
     while (1) {
@@ -36,13 +37,13 @@ int main() {
             exit(EXIT_FAILURE);
         } else if (bytesRead == 0) {
             // \u5982\u679c\u6ca1\u6709\u6570\u636e\uff0c\u7ba1\u9053\u88ab\u5173\u95ed
-            printf("No more data in the pipe.\n");
+            LOG(LOG_INFO, "No more data in the pipe.\n");
             break;
         }
 
         // \u6253\u5370\u8bfb\u53d6\u5230\u7684\u6570\u636e
         buffer[bytesRead] = '\n';  // \u786e\u4fdd\u5b57\u7b26\u4e32\u4ee5 NULL \u7ed3\u5c3e
-        printf("Received from pipe: %s", buffer);
+        LOG(LOG_INFO, "Received from pipe: %s", buffer);
         memset(buffer,0,sizeof(buffer));
     }
 

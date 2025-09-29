@@ -74,35 +74,35 @@ int CL_ret_data(char *buf)
         switch (err_num)
         {
         case errnum72:
-            printf("error name %c%c %s\n",(buf)[3],(buf)[4],err72);
+            LOG(LOG_ERROR, "error name %c%c %s\n",(buf)[3],(buf)[4],err72);
             break;
         case errnum73:
-            printf("error name %c%c %s\n",(buf)[3],(buf)[4],err73);
+            LOG(LOG_ERROR, "error name %c%c %s\n",(buf)[3],(buf)[4],err73);
             break;
         case errnum74:
-            printf("error name %c%c %s\n",(buf)[3],(buf)[4],err74);
+            LOG(LOG_ERROR, "error name %c%c %s\n",(buf)[3],(buf)[4],err74);
             break;
         case errnum81:
-            printf("error name %c%c %s\n",(buf)[3],(buf)[4],err81);
+            LOG(LOG_ERROR, "error name %c%c %s\n",(buf)[3],(buf)[4],err81);
             break;
         case errnum82:
-            printf("error name %c%c %s\n",(buf)[3],(buf)[4],err82);
+            LOG(LOG_ERROR, "error name %c%c %s\n",(buf)[3],(buf)[4],err82);
             break;
         case errnum83:
-            printf("error name %c%c %s\n",(buf)[3],(buf)[4],err83);
+            LOG(LOG_ERROR, "error name %c%c %s\n",(buf)[3],(buf)[4],err83);
             break;
         case errnum84:
-            printf("error name %c%c %s\n",(buf)[3],(buf)[4],err84);
+            LOG(LOG_ERROR, "error name %c%c %s\n",(buf)[3],(buf)[4],err84);
             break;
         default:
-             printf("unknow error %c%c error code %c%c\n",(buf)[3],(buf)[4],(buf)[6],(buf)[7]);
+             LOG(LOG_ERROR, "unknow error %c%c error code %c%c\n",(buf)[3],(buf)[4],(buf)[6],(buf)[7]);
             break;
         }
         return -1;
     }else if (((buf)[0] == buf_old[0])&& ((buf)[1] == buf_old[1]))
     {
         //测试
-        //printf("CL order send successfully!\n");
+        //LOG(LOG_ERROR,"CL order send successfully!\n");
         return 0;
     }
     return -1;

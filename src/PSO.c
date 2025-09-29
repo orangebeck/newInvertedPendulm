@@ -66,7 +66,7 @@ double fitness(PSO *p, int i, double target, double ITAETime, double PIDSampling
     if (fabs(ret - (control_xmt_module_infoSt->foundation_zero + distance)) > 0.01)
     {
         ITAERet = DBL_MAX; // 如果没有稳定在目标值附近，则认为适应度为无穷大
-        printf("[PSO]  fitness: Iterations = %d, ITAE = INF,  Kp = %f, Ki = %f, Kd = %f\n",
+        LOG(LOG_INFO, "[PSO] fitness: Iterations = %d, ITAE = INF,  Kp = %f, Ki = %f, Kd = %f\n",
                i,
                p->particles[i].position[0],
                p->particles[i].position[1],
@@ -74,7 +74,7 @@ double fitness(PSO *p, int i, double target, double ITAETime, double PIDSampling
     }
     else
     {
-        printf("[PSO]  fitness: Iterations = %d, ITAE = %f,  Kp = %f, Ki = %f, Kd = %f\n",
+        LOG(LOG_INFO, "[PSO] fitness: Iterations = %d, ITAE = %f,  Kp = %f, Ki = %f, Kd = %f\n",
                i,
                ITAERet,
                p->particles[i].position[0],
@@ -82,7 +82,7 @@ double fitness(PSO *p, int i, double target, double ITAETime, double PIDSampling
                p->particles[i].position[2]);
     }
 
-    printf("[PSO] [check] target = %f, cur = %f, minus = %f\n", control_xmt_module_infoSt->foundation_zero + distance, ret, fabs(ret - (control_xmt_module_infoSt->foundation_zero + distance)));
+    LOG(LOG_INFO, "[PSO] [check] target = %f, cur = %f, minus = %f\n", control_xmt_module_infoSt->foundation_zero + distance, ret, fabs(ret - (control_xmt_module_infoSt->foundation_zero + distance)));
     restorePID(p);
 
     // 等待恢复到最开始的基准
@@ -109,7 +109,7 @@ double fitness(PSO *p, int i, double target, double ITAETime, double PIDSampling
         sleep(1); // 每秒检查一次
     }
 
-    printf("[PSO] fitness over!\n");
+    LOG(LOG_INFO, "[PSO] fitness over!\n");
 
     return ITAERet;
 }
@@ -123,7 +123,7 @@ int updateParticle(PSO *p)
     Origin_PID[2] = p->origin_pid.Kd;
     for (int i = 0; i < NUM_PARTICLES; i++)
     {
-        // printf("Particle %d: Before Position = (%f, %f, %f), Velocity = (%f, %f, %f)\n", i, p->particles[i].position[0], p->particles[i].position[1], p->particles[i].position[2], p->particles[i].velocity[0], p->particles[i].velocity[1], p->particles[i].velocity[2]);
+        // LOG(LOG_INFO, "Particle %d: Before Position = (%f, %f, %f), Velocity = (%f, %f, %f)\n", i, p->particles[i].position[0], p->particles[i].position[1], p->particles[i].position[2], p->particles[i].velocity[0], p->particles[i].velocity[1], p->particles[i].velocity[2]);
         for (int j = 0; j < DIMENSIONS; j++)
         {
             int count = 0; // 用于计数，确保粒子位置与原始PID参数同号
@@ -133,8 +133,8 @@ int updateParticle(PSO *p)
                 tmp_v = 0, tmp_p = p->particles[i].position[j];
                 tmp_v = WIteration(p->iteration) * p->particles[i].velocity[j] + C1 * ((double)rand() / RAND_MAX) * (p->particles[i].bestPosition[j] - p->particles[i].position[j]) + C2 * ((double)rand() / RAND_MAX) * (p->globalBestPosition[j] - p->particles[i].position[j]);
 
-                // printf("Particle %d: p->particles[i].bestPosition[j] = %f, p->particles[i].position[j] = %f, p->globalBestPosition[i] = %f\n", i, p->particles[i].bestPosition[j], p->particles[i].position[j], p->globalBestPosition[j]);
-                // printf("Particle %d: p->particles[i].bestPosition[j] - p->particles[i].position[j] = %f, p->globalBestPosition[i] - p->particles[i].position[j] = %f\n", i, p->particles[i].bestPosition[j] - p->particles[i].position[j], p->globalBestPosition[j] - p->particles[i].position[j]);
+                // LOG(LOG_INFO, "Particle %d: p->particles[i].bestPosition[j] = %f, p->particles[i].position[j] = %f, p->globalBestPosition[i] = %f\n", i, p->particles[i].bestPosition[j], p->particles[i].position[j], p->globalBestPosition[j]);
+                // LOG(LOG_INFO, "Particle %d: p->particles[i].bestPosition[j] - p->particles[i].position[j] = %f, p->globalBestPosition[i] - p->particles[i].position[j] = %f\n", i, p->particles[i].bestPosition[j] - p->particles[i].position[j], p->globalBestPosition[j] - p->particles[i].position[j]);
 
                 if (tmp_v > V_MAX[j])
                 {
@@ -169,7 +169,7 @@ int updateParticle(PSO *p)
             }
             p->globalBestFitness = p->particles[i].bestFitness;
         }
-        // printf("Particle %d: After Position = (%f, %f, %f), Velocity = (%f, %f, %f)\n", i, p->particles[i].position[0], p->particles[i].position[1], p->particles[i].position[2], p->particles[i].velocity[0], p->particles[i].velocity[1], p->particles[i].velocity[2]);
+        // LOG(LOG_INFO, "Particle %d: After Position = (%f, %f, %f), Velocity = (%f, %f, %f)\n", i, p->particles[i].position[0], p->particles[i].position[1], p->particles[i].position[2], p->particles[i].velocity[0], p->particles[i].velocity[1], p->particles[i].velocity[2]);
     }
     return 0;
 }

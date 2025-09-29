@@ -36,12 +36,12 @@ void config_tty(int fd, struct termios *termios)
 
     if (tcsetattr(fd, TCSANOW, termios) < 0)
     {
-        printf("XMT fail to config tty\n");
+        LOG(LOG_ERROR, "XMT fail to config tty\n");
         exit(EXIT_FAILURE);
     }
     else
     {
-        printf("XMT device set to 9600bps,8N1\n");
+        LOG(LOG_INFO, "XMT device set to 9600bps,8N1\n");
     }
 }
 
@@ -51,7 +51,7 @@ int xmtfd_init(char *path)
     fd = open(path, O_RDWR);
     if (fd < 0)
     {
-        printf("XMT fail to open %s\n", path);
+        LOG(LOG_INFO, "XMT fail to open %s\n", path);
     }
     return fd;
 }
@@ -71,67 +71,39 @@ int config_xmt(int fd, unsigned char *buf, struct xmt_datapacket **xmt_datapacke
     }
     else
     {
-        printf("XMT read error");
+        LOG(LOG_ERROR, "XMT read error");
         return -1;
     }
-    printf("xmt clear\n");
+    LOG(LOG_INFO, "xmt clear\n");
     xmt_clear(*xmt_datapacket);
     ret = xmt_datainlist(*xmt_datapacket, buf);
     write(fd, buf, ret);
-    printf("xmt ocloop\n");
+    LOG(LOG_INFO, "xmt ocloop\n");
     xmt_ocloop(*xmt_datapacket, 'C', 0);
     ret = xmt_datainlist(*xmt_datapacket, buf);
     write(fd, buf, ret);
-    printf("xmt read displacement\n");
+    LOG(LOG_INFO, "xmt read displacement\n");
     xmt_read_displacement(*xmt_datapacket, 0, 0);
     ret = xmt_datainlist(*xmt_datapacket, buf);
     write(fd, buf, ret);
-     int i = 0;
-     printf("send 1     ");
-        for(i  =0; i < ret; i++ )
-        {
-            printf("%02X ", buf[i]);
-        }
-        printf("\n");
     ret = read(fd, buf, 1024);
     if (ret > 0)
     {
-        i = 0;
-        printf("receice 1     ");
-        for(i  =0; i < ret; i++ )
-        {
-            printf("%02X ", buf[i]);
-        }
-        printf("\n");
         xmt_parambuf(buf, *xmt_datapacket);
         xmt_decode_displacement(*xmt_datapacket);
     }
-    printf("xmt read displacement\n");
+    LOG(LOG_INFO, "xmt read displacement\n");
     xmt_read_displacement(*xmt_datapacket, 1, 0);
     ret = xmt_datainlist(*xmt_datapacket, buf);
-    i = 0;
-     printf("send 2     ");
-        for(i  =0; i < ret; i++ )
-        {
-            printf("%02X ", buf[i]);
-        }
-        printf("\n");
     write(fd, buf, ret);
     ret = read(fd, buf, 1024);
     if (ret > 0)
     {
-                i = 0;
-        printf("receice 2     ");
-        for(i  =0; i < ret; i++ )
-        {
-            printf("%02X ", buf[i]);
-        }
-        printf("\n");
         xmt_parambuf(buf, *xmt_datapacket);
         xmt_decode_displacement(*xmt_datapacket);
     }
 
-    printf("XMT lower is %f, upper is %f\n", (*xmt_datapacket)->lower, (*xmt_datapacket)->upper);
+    LOG(LOG_INFO, "XMT lower is %f, upper is %f\n", (*xmt_datapacket)->lower, (*xmt_datapacket)->upper);
 
     return 0;
 }
@@ -190,7 +162,7 @@ void get_file_name(char *buf, size_t bufSize)
     snprintf(buf, bufSize, "%s/%s%s", folder, timebuf, ext);
 
     // 打印调试信息
-    printf("File path: %s\n", buf);
+    LOG(LOG_DEBUG, "File path: %s\n", buf);
 }
 
 FILE* createSaveFile()
@@ -202,7 +174,7 @@ FILE* createSaveFile()
     fp = fopen(buffer, "w");
     if (fp == NULL)
     {
-        printf("无法创建文件\n");
+        LOG(LOG_ERROR, "无法创建文件\n");
         perror("Error opening file");
         return NULL;
     }
@@ -223,7 +195,7 @@ void *PSOControlThread(void *arg)
         pthread_cond_wait(&pipeShareDataSt->pso_cond, &pipeShareDataSt->pso_mutex); 
         pthread_mutex_unlock(&pipeShareDataSt->pso_mutex);
 
-        printf("PSOControlThread start\n");
+        LOG(LOG_INFO, "PSOControlThread start\n");
         pso.target = info->foundation_zero;
         pso.ITAETime = 60.0;
         pso.PIDSamplingTime = info->dt;
@@ -234,7 +206,7 @@ void *PSOControlThread(void *arg)
         for (int i = 0; i < MAX_ITERATIONS; i++) {
             pso.iteration = i;
             updateParticle(&pso);
-            printf("Iteration %d: Best fitness = %f, Kp = %f, Ki = %f, Kd = %f\n", i, pso.globalBestFitness, pso.globalBestPosition[0], pso.globalBestPosition[1], pso.globalBestPosition[2]);
+            LOG(LOG_INFO, "Iteration %d: Best fitness = %f, Kp = %f, Ki = %f, Kd = %f\n", i, pso.globalBestFitness, pso.globalBestPosition[0], pso.globalBestPosition[1], pso.globalBestPosition[2]);
         }
         send_pid_p_impl(pipeShareDataSt,pso.globalBestPosition[0]);
         send_pid_i_impl(pipeShareDataSt,pso.globalBestPosition[1]);
@@ -265,7 +237,7 @@ void *PIDControlThread(void *arg)
     #endif
 
     if (res < 0) goto configErr;
-    printf("XMT init successfully!\n");
+    LOG(LOG_INFO, "XMT init successfully!\n");
     pipeShareDataSt->send_xmt_command(pipeShareDataSt,1);
 
     #ifndef DEBUG_MODE
@@ -359,7 +331,7 @@ void *PIDControlThread(void *arg)
             fp = createSaveFile();
             if (fp == NULL)
             {
-                printf("无法创建文件\n");
+                LOG(LOG_ERROR, "无法创建文件\n");
                 return NULL;
             }
         }

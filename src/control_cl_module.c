@@ -50,12 +50,12 @@ int clConfigTty(int fd, struct termios *termios)
 
     if (tcsetattr(fd, TCSANOW, termios) < 0)
     {
-        printf("CL fail to config tty\n");
+        LOG(LOG_ERROR, "CL fail to config tty\n");
         return ERROR_IO_FAILURE;
     }
     else
     {
-        printf("CL device set to 115200bps,8N1\n");
+        LOG(LOG_INFO, "CL device set to 115200bps,8N1\n");
         return SUCCESS;
     }
 }
@@ -66,7 +66,7 @@ int fd_init(char *path)
     fd = open(path, O_RDWR);
     if (fd < 0)
     {
-        printf("CL fail to open %s\n", path);
+        LOG(LOG_ERROR, "CL fail to open %s\n", path);
     }
     return fd;
 }
@@ -126,7 +126,7 @@ void timer_thread(int signo, siginfo_t *sigInfo, void *context)
         pthread_mutex_unlock(&info->mutex);
     }else
     {
-        printf("timer_thread\n");
+        LOG(LOG_INFO, "timer_thread\n");
     }
 }
 
@@ -138,7 +138,7 @@ void stopThread(int fd)
     write(fd, buf, res);
     res = read(fd, buf, 1024);
     CL_ret_data(buf);
-    printf("Close CL thread\n");
+    LOG(LOG_INFO, "Close CL thread\n");
     close(fd);
 }
 
@@ -187,7 +187,7 @@ timer_t signal_init(control_cl_module_info *info)
         perror("timer_settime");
         return NULL;
     }
-    printf("CL signal init successfully!\n");
+    LOG(LOG_INFO, "CL signal init successfully!\n");
     pipeShareDataSt->send_cl_command(pipeShareDataSt, 1);
     return timer_id;
 }
