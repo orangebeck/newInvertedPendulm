@@ -1,6 +1,5 @@
 #include "control_xmt_module.h"
 
-#include "pend_ctrl.h"
 
 void config_tty(int fd, struct termios *termios)
 {
@@ -226,10 +225,10 @@ void *PSOControlThread(void *arg)
 
         printf("PSOControlThread start\n");
         pso.target = info->foundation_zero;
-        pso.ITAETime = 20.0;
+        pso.ITAETime = 60.0;
         pso.PIDSamplingTime = info->dt;
 
-        backupPID(&pso,  &pipeShareDataSt->pid);
+        backupPID(&pso,  &pipeShareDataSt->cpid);
         initPSO(&pso);
 
         for (int i = 0; i < MAX_ITERATIONS; i++) {
@@ -289,15 +288,15 @@ void *PIDControlThread(void *arg)
 
     //临时实验 前馈+PID
     DeviceInfo deviceInfo = {
-        .foundation_zero = -0.0625, //mm
+        .foundation_zero = -0.57, //mm
         .target = -0.0625,
-        .dt = 0.05,
-        .hangLenth = 258,
+        .dt = 0.050,
+        .hangLenth = 270.0,
         .amplify = 14.0,
     };
 
     CtrlParams ctrlParams;
-    Ctrl_GetDefaultParams(0.05, &ctrlParams);
+    // Ctrl_GetDefaultParams(0.05, &pipeShareDataSt->cpid);
 
     CtrlState ctrlState;
     Ctrl_Init(&ctrlState);
@@ -312,7 +311,7 @@ void *PIDControlThread(void *arg)
         before_filter = control_cl_module_infoSt->clData;
         pthread_mutex_unlock(&control_cl_module_infoSt->mutex);
 
-        before_filter = firFilterProcess(before_filter);
+        // before_filter = firFilterProcess(before_filter);
         
         //如果放大倍数测量的时候就设置 pid_status == 0 ， 向xmt发送的消息为设定放大值
         if(pipeShareDataSt->pid_status == 0)
@@ -320,18 +319,19 @@ void *PIDControlThread(void *arg)
             PIDresult = pipeShareDataSt->amplify_set;
         }else if (pipeShareDataSt->pid_status == 1)
         {
-            ctrlParams.Kp = pipeShareDataSt->pid.Kp;
-            ctrlParams.Ki = pipeShareDataSt->pid.Ki;
-            ctrlParams.Kd = pipeShareDataSt->pid.Kd;
+            // ctrlParams.Kp = pipeShareDataSt->pid.Kp;
+            // ctrlParams.Ki = pipeShareDataSt->pid.Ki;
+            // ctrlParams.Kd = pipeShareDataSt->pid.Kd;
             deviceInfo.target = control_xmt_module_infoSt->target;
 
-            PIDresult = Controller_Step(before_filter, &deviceInfo, &ctrlParams, &ctrlState, XMT_OFFSET, -1); 
+
+            PIDresult = Controller_Step(before_filter, &deviceInfo, &pipeShareDataSt->cpid, &ctrlState, XMT_OFFSET, -1); 
 
             // pipeShareDataSt->send_pid_error(pipeShareDataSt, pipeShareDataSt->pid.prevError);
             // pipeShareDataSt->send_pid_intergrate(pipeShareDataSt, pipeShareDataSt->pid.integral);
             // pipeShareDataSt->send_xmt_value(pipeShareDataSt, PIDresult);
         }
-        printf("PIDresult=%f\n",PIDresult);
+        // printf("PIDresult=%f\n",PIDresult);
         #ifndef DEBUG_MODE
         xmt_numtodata(xmt_data_ins, 0, 0, PIDresult);
         res = xmt_datainlist(xmt_data_ins, buf);

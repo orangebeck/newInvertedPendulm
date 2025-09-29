@@ -2,10 +2,10 @@ CC = gcc
 CFLAGS = -Wall -g -Iinclude -Wno-unused-variable -DDEBUG_MODE
 ifeq ($(TARGET_ARCH), arm)
     CC = arm-linux-gnueabihf-gcc
-	CFLAGS = -Wall -g -Iinclude -Wno-unused-variable
+	CFLAGS = -Wall -g -Iinclude -Wno-unused-variable 
 endif
 
-LDFLAGS = -lpthread -lrt
+LDFLAGS = -lpthread -lrt -lm
 TARGET = bin/app
 SRC = $(wildcard src/*.c)
 OBJ = $(patsubst src/%, build/%, $(SRC:.c=.o))
@@ -22,7 +22,7 @@ $(TARGET): $(OBJ)
 
 build/%.o: src/%.c
 	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -c $< -o $@ $(LDFLAGS)
+	$(CC) $(CFLAGS) -c $< -o $@ $(LDFLAGS) 
 
 clean:
 	rm -rf bin/* build/* ./*.csv

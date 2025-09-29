@@ -24,6 +24,7 @@
 #include "control_cl_module.h"
 #include "StControl_xmt_module_info.h"
 #include "cycleBuffer.h"
+#include "pend_ctrl.h"
 #include "PSO.h"
 
 #define XMT_OFFSET 0.150

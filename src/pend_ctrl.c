@@ -181,7 +181,7 @@ void Ctrl_GetDefaultParams(double dt, CtrlParams* p)
     p->beta = 0.4;
 
     /* 滤波：20Hz 下建议慢一些，防激振 */
-    p->tau_d = 0.50;  // s
+    p->tau_d = 0.10;  // s
     p->Tsp1  = 1.0;   // s
     p->Tsp2  = 1.0;   // s
 
@@ -196,11 +196,11 @@ void Ctrl_GetDefaultParams(double dt, CtrlParams* p)
     p->th_dabs_mms = 0.20;      // mm/s
     p->dwell_s     = 0.50;      // s
 
-    // // 设置滤波器的参数
-    // double cutoff_freq = 2.0;      // 截止频率 0.5 Hz
-    // double sample_rate = 1.0 / dt;     // 采样频率 10 Hz
+    // 设置滤波器的参数
+    double cutoff_freq = 2.0;      // 截止频率 0.5 Hz
+    double sample_rate = 20.0;     // 采样频率 10 Hz
 
-    // butterworth_coeff(cutoff_freq, sample_rate, &filter);
+    butterworth_coeff(cutoff_freq, sample_rate, &filter);
 
     if (design_butterworth_lowpass_biquad(fc, fs, &b0,&b1,&b2,&a1,&a2) != 0) {
         printf("bad params\n");
@@ -297,31 +297,29 @@ double Controller_Step(double before_filter_mm,
     }
 
     /* 7) 未饱和输出 */
-    double filtered = zero_phase_filter(&filter, D);
+    // double filtered = zero_phase_filter(&filter, D);
 
-        // 反向滤波
+    //     // 反向滤波
     // D = reverse_zero_phase_filter(&filter, filtered);
-    D = biquad_cascade_step(&lp2, D, b0,b1,b2, a1,a2);
+    if((eP < 0.001 && eP > -0.001) )
+    {
+        biquad_cascade_step(&lp2, D, b0,b1,b2, a1,a2);
+    }else
+    {
+        biquad_cascade_step(&lp2, D, b0,b1,b2, a1,a2);
+    }
+    
     const double u_unsat = alpha_ff + P + D + I ;
-    printf("dy_f = %f, b*rmm = %f, ymm = %f, eP = %f,D = %f , ", s->dy_f, p->beta * r_mm ,y_mm, eP, D);
+    // printf("dy_f = %f, b*rmm = %f, ymm = %f, eP = %f,D = %f , ", s->dy_f, p->beta * r_mm ,y_mm, eP, D);
     /* 8) 限幅 + 斜率限幅 */
     double alpha_cmd = CLAMP(u_unsat, p->alpha_min, p->alpha_max);
 
-    if(eP < 0.001 && eP > -0.001)
-    {
-        if (p->slew_rate > 0.0) {
-            const double dmax = 0.0005 * dt;
-            const double lo = s->alpha_prev - dmax;
-            const double hi = s->alpha_prev + dmax;
-            alpha_cmd = CLAMP(alpha_cmd, lo, hi);
-        }
-    }else{
-        if (p->slew_rate > 0.0) {
-            const double dmax = p->slew_rate * dt;
-            const double lo = s->alpha_prev - dmax;
-            const double hi = s->alpha_prev + dmax;
-            alpha_cmd = CLAMP(alpha_cmd, lo, hi);
-        }
+
+    if (p->slew_rate > 0.0) {
+        const double dmax = p->slew_rate * dt;
+        const double lo = s->alpha_prev - dmax;
+        const double hi = s->alpha_prev + dmax;
+        alpha_cmd = CLAMP(alpha_cmd, lo, hi);
     }
 
 

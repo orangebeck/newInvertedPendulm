@@ -5,6 +5,7 @@
 #include "pid_core.h"
 #include "control_cl_module.h"
 #include "StControl_xmt_module_info.h"
+#include "pend_ctrl.h"
 
 #include <stdlib.h>
 #include <sys/stat.h>
@@ -24,6 +25,8 @@ typedef void (*send_func_command_t)(struct pipeShareData*, int);
 
 typedef struct pipeShareData{
     PIDController pid;
+    CtrlParams cpid;
+
     int pid_status;
 
     float amplify_set;

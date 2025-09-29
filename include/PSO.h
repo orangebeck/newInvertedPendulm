@@ -9,6 +9,7 @@
 #include "pid_core.h"
 #include "control_cl_module.h"
 #include "control_xmt_module.h"
+#include "pend_ctrl.h"
 
 #define NUM_PARTICLES 5  // 粒子数量
 #define DIMENSIONS 3      // 搜索空间的维度
@@ -17,9 +18,9 @@
 #define WMIN 0.5              // 局部权重
 #define C1 1.5             // 自我认知权重
 #define C2 1.5             // 社会认知权重
-#define PSO_INIT_INDEX_P 0.05
-#define PSO_INIT_INDEX_I 0.0001
-#define PSO_INIT_INDEX_D 5
+#define PSO_INIT_INDEX_P 0.08
+#define PSO_INIT_INDEX_I 0.01
+#define PSO_INIT_INDEX_D 0.02
 #define PSO_INIT_INDEX 0.0001
 #define HOLD_SECONDS 5
 
@@ -34,6 +35,8 @@ typedef struct {
 typedef struct {
     PIDController *pid;
     PIDController origin_pid;
+    CtrlParams *cpid;
+    CtrlParams origin_cpid;
     Particle particles[NUM_PARTICLES];
     double globalBestPosition[DIMENSIONS];
     double globalBestFitness;
@@ -58,7 +61,7 @@ int updateParticle(PSO *p);
 
 int initPSO(PSO *pso);
 
-void backupPID(PSO *p, PIDController *pid);
+void backupPID(PSO *p, CtrlParams *pid);
 
 void restorePID(PSO *p);
 

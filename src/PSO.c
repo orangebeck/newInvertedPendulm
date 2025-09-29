@@ -10,22 +10,22 @@ double ITAE(double time, double target, double current, double samplingTime)
     return time * fabs(target - current) * samplingTime;
 }
 
-void backupPID(PSO *p, PIDController *pid)
+void backupPID(PSO *p, CtrlParams *pid)
 {
     if (pid)
-        p->pid = pid;
-    p->origin_pid.Kp = p->pid->Kp;
-    p->origin_pid.Ki = p->pid->Ki;
-    p->origin_pid.Kd = p->pid->Kd;
+        p->cpid = pid;
+    p->origin_cpid.Kp = p->cpid->Kp;
+    p->origin_cpid.Ki = p->cpid->Ki;
+    p->origin_cpid.Kd = p->cpid->Kd;
 }
 
 void restorePID(PSO *p)
 {
     if (!p || !p->pid)
         return;
-    p->pid->Kp = p->origin_pid.Kp;
-    p->pid->Ki = p->origin_pid.Ki;
-    p->pid->Kd = p->origin_pid.Kd;
+    p->cpid->Kp = p->origin_cpid.Kp;
+    p->cpid->Ki = p->origin_cpid.Ki;
+    p->cpid->Kd = p->origin_cpid.Kd;
 }
 
 
@@ -34,15 +34,15 @@ double fitness(PSO *p, int i, double target, double ITAETime, double PIDSampling
     double distance = 0.0;
     double time_ = 0;
     backupPID(p, NULL);
-    p->pid->integral = 0;
-    p->pid->prevError = 0;
-    p->pid->Kp = p->particles[i].position[0];
-    p->pid->Ki = p->particles[i].position[1];
-    p->pid->Kd = p->particles[i].position[2];
+    // p->pid->integral = 0;
+    // p->pid->prevError = 0;
+    p->cpid->Kp = p->particles[i].position[0];
+    p->cpid->Ki = p->particles[i].position[1];
+    p->cpid->Kd = p->particles[i].position[2];
     double ret = 0;
     double ITAERet = 0;
     pthread_mutex_lock(&control_xmt_module_infoSt->mutex);
-    control_xmt_module_infoSt->foundation_zero = control_xmt_module_infoSt->foundation_zero + distance; // 暂定增加100微米
+    control_xmt_module_infoSt->foundation_zero = control_xmt_module_infoSt->target + distance; // 暂定增加100微米
     pthread_mutex_unlock(&control_xmt_module_infoSt->mutex);
     for (time_ = 0; time_ < (ITAETime / PIDSamplingTime); time_++)
     {
@@ -50,20 +50,20 @@ double fitness(PSO *p, int i, double target, double ITAETime, double PIDSampling
         pthread_cond_wait(&control_cl_module_infoSt->cond, &control_cl_module_infoSt->mutex);
         ret = control_cl_module_infoSt->clData;
         pthread_mutex_unlock(&control_cl_module_infoSt->mutex);
-        if(fabs(0.0 - distance) >= 0.0000001)
-        {
-            if (fabs(ret - control_xmt_module_infoSt->foundation_zero + distance) > 3 * distance)
-            {
-                ITAERet = DBL_MAX;
-                break;
-            }
-        }
+        // if(fabs(0.0 - distance) >= 0.0000001)
+        // {
+        //     if (fabs(ret - control_xmt_module_infoSt->target + distance) > 3 * distance)
+        //     {
+        //         ITAERet = DBL_MAX;
+        //         break;
+        //     }
+        // }
             ITAERet += ITAE(time_, control_xmt_module_infoSt->foundation_zero, ret, PIDSamplingTime);
     }
     pthread_mutex_lock(&control_xmt_module_infoSt->mutex);
     control_xmt_module_infoSt->foundation_zero = control_xmt_module_infoSt->foundation_zero - distance; // 暂定增加100微米
     pthread_mutex_unlock(&control_xmt_module_infoSt->mutex);
-    if (fabs(ret - (control_xmt_module_infoSt->foundation_zero + distance)) > 0.1)
+    if (fabs(ret - (control_xmt_module_infoSt->foundation_zero + distance)) > 0.01)
     {
         ITAERet = DBL_MAX; // 如果没有稳定在目标值附近，则认为适应度为无穷大
         printf("[PSO]  fitness: Iterations = %d, ITAE = INF,  Kp = %f, Ki = %f, Kd = %f\n",
@@ -91,7 +91,7 @@ double fitness(PSO *p, int i, double target, double ITAETime, double PIDSampling
     while (1)
     {
         double diff = fabs(control_cl_module_infoSt->clData - control_xmt_module_infoSt->foundation_zero);
-        if (diff <= 0.05)
+        if (diff <= 0.005)
         {
             if (start_time == 0)
             {
@@ -182,34 +182,34 @@ int initPSO(PSO *pso)
     {
         if (i == 0)
         {
-            pso->particles[i].position[0] = pso->origin_pid.Kp; // 粒子在[-0.5,0.5]之间随机初始化
+            pso->particles[i].position[0] = pso->origin_cpid.Kp; // 粒子在[-0.5,0.5]之间随机初始化
             pso->particles[i].velocity[0] = (double)rand() / RAND_MAX * PSO_INIT_INDEX_P - PSO_INIT_INDEX_P / 2;
 
-            pso->particles[i].position[1] = pso->origin_pid.Ki; // 粒子在[-0.5,0.5]之间随机初始化
+            pso->particles[i].position[1] = pso->origin_cpid.Ki; // 粒子在[-0.5,0.5]之间随机初始化
             pso->particles[i].velocity[1] = (double)rand() / RAND_MAX * PSO_INIT_INDEX_I - PSO_INIT_INDEX_I / 2;
 
-            pso->particles[i].position[2] = pso->origin_pid.Kd; // 粒子在[-0.5,0.5]之间随机初始化
+            pso->particles[i].position[2] = pso->origin_cpid.Kd; // 粒子在[-0.5,0.5]之间随机初始化
             pso->particles[i].velocity[2] = (double)rand() / RAND_MAX * PSO_INIT_INDEX_D - PSO_INIT_INDEX_D / 2;
         }
         else
         {
             do
             {
-                pso->particles[i].position[0] = (double)rand() / RAND_MAX * PSO_INIT_INDEX_P - PSO_INIT_INDEX_P / 2 + pso->origin_pid.Kp; // 粒子在[-0.5,0.5]之间随机初始化
+                pso->particles[i].position[0] = (double)rand() / RAND_MAX * PSO_INIT_INDEX_P - PSO_INIT_INDEX_P / 2 + pso->origin_cpid.Kp; // 粒子在[-0.5,0.5]之间随机初始化
                 pso->particles[i].velocity[0] = (double)rand() / RAND_MAX * PSO_INIT_INDEX_P - PSO_INIT_INDEX_P / 2;
-            } while ((pso->particles[i].position[0] * pso->origin_pid.Kp) < 0);
+            } while ((pso->particles[i].position[0] * pso->origin_pid.Kp) > 0);
 
             do
             {
-                pso->particles[i].position[1] = (double)rand() / RAND_MAX * PSO_INIT_INDEX_I - PSO_INIT_INDEX_I / 2 + pso->origin_pid.Ki; // 粒子在[-0.5,0.5]之间随机初始化
+                pso->particles[i].position[1] = (double)rand() / RAND_MAX * PSO_INIT_INDEX_I - PSO_INIT_INDEX_I / 2 + pso->origin_cpid.Ki; // 粒子在[-0.5,0.5]之间随机初始化
                 pso->particles[i].velocity[1] = (double)rand() / RAND_MAX * PSO_INIT_INDEX_I - PSO_INIT_INDEX_I / 2;
-            } while ((pso->particles[i].position[1] * pso->origin_pid.Ki) < 0);
+            } while ((pso->particles[i].position[1] * pso->origin_pid.Ki) >0);
 
             do
             {
-                pso->particles[i].position[2] = (double)rand() / RAND_MAX * PSO_INIT_INDEX_D - PSO_INIT_INDEX_D / 2 + pso->origin_pid.Kd; // 粒子在[-0.5,0.5]之间随机初始化
+                pso->particles[i].position[2] = (double)rand() / RAND_MAX * PSO_INIT_INDEX_D - PSO_INIT_INDEX_D / 2 + pso->origin_cpid.Kd; // 粒子在[-0.5,0.5]之间随机初始化
                 pso->particles[i].velocity[2] = (double)rand() / RAND_MAX * PSO_INIT_INDEX_D - PSO_INIT_INDEX_D / 2;
-            } while ((pso->particles[i].position[2] * pso->origin_pid.Kd) < 0);
+            } while ((pso->particles[i].position[2] * pso->origin_pid.Kd) > 0);
         }
 
         for (int j = 0; j < DIMENSIONS; j++)

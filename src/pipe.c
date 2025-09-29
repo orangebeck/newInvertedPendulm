@@ -37,6 +37,7 @@ pipeShareData *initPipeShareDataSt(){
     memset(data,0,sizeof(pipeShareData));
 
     PID_Init(&data->pid, 0, 0, 0, 0.15, 0.1);
+    Ctrl_GetDefaultParams(0.05, &data->cpid);
 
     data->pid_status = 0;
     data->amplify_set = 0.15;
@@ -171,17 +172,17 @@ int pipeControl(char *infoList[], pipeShareData *pipeShareDataSt)
             pipeShareDataSt->pid_status = 1;
             if (strcmp(infoList[i], "P") == 0)
             {
-                pipeShareDataSt->pid.Kp = atof(infoList[i + 1]);
+                pipeShareDataSt->cpid.Kp = atof(infoList[i + 1]);
                 printf("%s PID P = %f\n", __func__, atof(infoList[i + 1]));
             }
             else if (strcmp(infoList[i], "I") == 0)
             {
-                pipeShareDataSt->pid.Ki = atof(infoList[i + 1]);
+                pipeShareDataSt->cpid.Ki = atof(infoList[i + 1]);
                 printf("%s PID I = %f\n", __func__, atof(infoList[i + 1]));
             }
             else if (strcmp(infoList[i], "D") == 0)
             {
-                pipeShareDataSt->pid.Kd = atof(infoList[i + 1]);
+                pipeShareDataSt->cpid.Kd = atof(infoList[i + 1]);
                 printf("%s PID D = %f\n", __func__, atof(infoList[i + 1]));
             }
             pthread_mutex_unlock(&pipeShareDataSt->stop_mutex);
