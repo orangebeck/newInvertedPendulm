@@ -26,6 +26,7 @@
 #include "cycleBuffer.h"
 #include "pend_ctrl.h"
 #include "PSO.h"
+#include "log.h"
 
 #define XMT_OFFSET 0.150
 

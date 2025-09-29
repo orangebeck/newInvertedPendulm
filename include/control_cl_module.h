@@ -21,6 +21,7 @@
 #include "error_codes.h"
 #include "cl_hal_driver.h"
 #include "pipe.h"
+#include "log.h"
 
 #define SAMPLETIME 50.0
 
