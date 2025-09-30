@@ -186,6 +186,10 @@ FILE* createSaveFile()
 
 void *PSOControlThread(void *arg)
 {   
+    char thread_name[16];
+    snprintf(thread_name, sizeof(thread_name), "%s", "PSOControl");
+    pthread_setname_np(pthread_self(), thread_name);
+    
     control_xmt_module_info *info = (control_xmt_module_info *)arg;
     PSO pso;
     srand(time(NULL));
@@ -213,11 +217,16 @@ void *PSOControlThread(void *arg)
         send_pid_d_impl(pipeShareDataSt,pso.globalBestPosition[2]);
 
     }
+    LOG(LOG_INFO, "%s thread exit\n", __func__);
     pthread_exit(NULL);  // 线程退出
 }
 
 void *PIDControlThread(void *arg)
 {
+    char thread_name[16];
+    snprintf(thread_name, sizeof(thread_name), "%s", "PIDControl");
+    pthread_setname_np(pthread_self(), thread_name);
+
     control_xmt_module_info *info = (control_xmt_module_info *)arg;
     struct termios termios_tty;
     struct xmt_datapacket *xmt_data_ins;
@@ -343,13 +352,14 @@ void *PIDControlThread(void *arg)
     close(info->fd);
 
 configErr:
+    LOG(LOG_INFO, "%s thread exit\n", __func__);
     pthread_exit(NULL);  // 线程退出
 }
 
 void *xmtReceiveInputThread(void *arg)
 {
     char thread_name[16];
-    snprintf(thread_name, sizeof(thread_name), "%s", "xmtReThread");
+    snprintf(thread_name, sizeof(thread_name), "%s", "xmtReceive");
     pthread_setname_np(pthread_self(), thread_name);
 
     pthread_t PSOThread;
@@ -374,5 +384,6 @@ void *xmtReceiveInputThread(void *arg)
         perror("Thread join failed");
         return NULL;
     }
+    LOG(LOG_INFO, "%s thread exit\n", __func__);
     return NULL;
 }

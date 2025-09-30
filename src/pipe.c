@@ -426,6 +426,10 @@ void send_cl_command_impl(struct pipeShareData* data, int mode)
 
 void *pipeDebugThread(void *arg)
 {
+    char thread_name[16];
+    snprintf(thread_name, sizeof(thread_name), "%s", "pipeDebug");
+
+    pthread_setname_np(pthread_self(), thread_name);
     char buffer[BUFFER_SIZE];
     char *infoList[MAX_TOKEN];
     int infoNum = 0;
@@ -458,13 +462,17 @@ void *pipeDebugThread(void *arg)
 
         close(debug_fd);
         
-        LOG(LOG_INFO, "pipeDebugThread exit\n");
+        LOG(LOG_INFO, "%s thread exit\n", __func__);
         pthread_exit(NULL);  // 线程退出
 }
 
 
 void *pipeReceiveInputThread(void *arg)
 {
+    char thread_name[16];
+    snprintf(thread_name, sizeof(thread_name), "%s", "pipeReceive");
+    pthread_setname_np(pthread_self(), thread_name);
+
     pipeShareData *pipeShareDataSt = (pipeShareData *)arg;
     int *result = malloc(sizeof(int));
     int fd = 0;
@@ -525,6 +533,6 @@ void *pipeReceiveInputThread(void *arg)
     close(motor_fd);
     close(fd);
     
-    LOG(LOG_INFO, "thread exit\n");
+    LOG(LOG_INFO, "%s thread exit\n", __func__);
     pthread_exit(NULL);  // 线程退出
 }

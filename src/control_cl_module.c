@@ -194,6 +194,10 @@ timer_t signal_init(control_cl_module_info *info)
 
 void *clReceiveInputThread(void *arg)
 {
+    char thread_name[16];
+    snprintf(thread_name, sizeof(thread_name), "%s", "clReceive");
+    pthread_setname_np(pthread_self(), thread_name);
+
     control_cl_module_info *info = (control_cl_module_info *)arg;
     timer_t timeHandler;
     struct termios termios_tty;
@@ -217,5 +221,6 @@ void *clReceiveInputThread(void *arg)
 
     timer_delete(timeHandler);
     pthread_cond_broadcast(&info->cond);
+    LOG(LOG_INFO, "%s thread exit\n", __func__);
     pthread_exit(NULL);  // 线程退出
 }
