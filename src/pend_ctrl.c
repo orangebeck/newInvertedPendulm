@@ -128,10 +128,16 @@ double Controller_Step(double before_filter_mm,
 
     /* 积分器（只在 TRACK 模式下积累） */
     double I = 0.0;
-    if (s->mode == CTRL_TRACK ) {
-        s->I_state += p->Ki * eI * dt;   // rad
-        I = s->I_state;
-    }
+    static double sp1 = 0.0, sp2 = 0.0;
+
+    s->I_state += p->Ki * eI * dt; 
+    sp1 = lpf_step(s->I_state, sp1, dt, 1.0);
+    sp2 = lpf_step(sp1,  sp2, dt, 1.0);
+    I = sp2;
+    // if (s->mode == CTRL_TRACK ) {
+    //     s->I_state += p->Ki * eI * dt;   // rad
+    //     I = s->I_state;
+    // }
 
     /* 7) 未饱和输出 */    
     const double u_unsat = alpha_ff + P + D + I ;
