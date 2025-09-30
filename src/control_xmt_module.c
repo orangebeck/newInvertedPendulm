@@ -260,11 +260,11 @@ void *PIDControlThread(void *arg)
 
     //临时实验 前馈+PID
     DeviceInfo deviceInfo = {
-        .foundation_zero = -0.57, //mm
+        .foundation_zero = 0.5619, //mm
         .target = -0.0625,
         .dt = 0.050,
         .hangLenth = 270.0,
-        .amplify = 14.0,
+        .amplify = 13.0,
     };
 
     CtrlParams ctrlParams;
@@ -348,6 +348,10 @@ configErr:
 
 void *xmtReceiveInputThread(void *arg)
 {
+    char thread_name[16];
+    snprintf(thread_name, sizeof(thread_name), "%s", "xmtReThread");
+    pthread_setname_np(pthread_self(), thread_name);
+
     pthread_t PSOThread;
     pthread_t PIDThread;
 

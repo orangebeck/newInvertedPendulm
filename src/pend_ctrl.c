@@ -120,7 +120,7 @@ double Controller_Step(double before_filter_mm,
     if(change_filter > 8.0)
     {
         //不对dy进行滤波的情况下可能会导致dy过大，所以需要乘一个系数降低D的幅值
-        D = - positive_nagtive_mode * p->Kd * s->dy_f * 0.5;   // rad（抑制速度）
+        D = - positive_nagtive_mode * p->Kd * s->dy_f * 0.5 * 0.1 ;   // rad（抑制速度）
     }else
     {
         D = - positive_nagtive_mode * p->Kd * s->dy_f;   // rad（抑制速度）

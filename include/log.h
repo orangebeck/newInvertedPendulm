@@ -13,7 +13,7 @@ typedef enum {
 } LogLevel;
 
 #define LOG(level, fmt, ...) \
-    printf("[%s] [%s]\t" fmt "\n", get_current_time(), \
+    printf("[%s] [%s]\t" fmt , get_current_time(), \
            (level == LOG_DEBUG) ? "DEBUG" : \
            (level == LOG_INFO) ? "INFO" : \
            (level == LOG_WARNING) ? "WARNING" : "ERROR", ##__VA_ARGS__)
