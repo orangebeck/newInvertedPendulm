@@ -21,9 +21,9 @@ void Ctrl_GetDefaultParams(double dt, CtrlParams* p)
     p->G_mm_per_rad   = 3.80;
 
     /* 起步增益：稳妥为主（可现场小步调） */
-    p->Kp   = 6e-1;   // mrad/mm
-    p->Kd   = 3.0;   // mrad/(mm/s)
-    p->Ki   = 2e-2;   // mrad/(mm*s)
+    p->Kp   = 0.0;   // mrad/mm
+    p->Kd   = 0.14;   // mrad/(mm/s)
+    p->Ki   = 0.0;   // mrad/(mm*s)
     p->beta = 0.4;
 
     /* 滤波：20Hz 下建议慢一些，防激振 */
@@ -60,8 +60,6 @@ void Ctrl_Init(CtrlState* s)
     s->dwell_acc = 0.0;
     s->last_P = s->last_D = s->last_I = s->last_FF = s->last_u_unsat = 0.0;
     s->initialized = false;
-
-
 }
 
 double Controller_Step(double before_filter_mm,
