@@ -4,11 +4,13 @@
 #include <unistd.h>
 
 int main() {
-    cycleBuffer *cb = initCycleBuffer(8);
+    CycleBuffer *cb = cycle_buffer_init(20);
     int i = 0;
     while (1)
     {
-        printf("i = %d, cycleBuffer sum = %f\n",i,putCycleBuffer(cb, 1)/cb->count);
+        cycle_buffer_push(cb, i);
+        cycle_buffer_print(cb);
+        printf("i = %d, cycleBuffer sum = %f\n",i,cycle_buffer_avg(cb));
         i++;
         sleep(1);
     }

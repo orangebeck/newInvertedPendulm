@@ -237,7 +237,6 @@ void *PIDControlThread(void *arg)
     FILE* fp = createSaveFile();
     int count = 0;
     double before_filter;
-    cycleBuffer* cb = initCycleBuffer(1000);
 
     #ifndef DEBUG_MODE
         info->fd = xmtfd_init(default_path);
@@ -282,9 +281,9 @@ void *PIDControlThread(void *arg)
     CtrlState ctrlState;
     Ctrl_Init(&ctrlState);
 
-    pipeShareDataSt->pid_status = 1; //模拟的时候直接进入pid状态
+    // pipeShareDataSt->pid_status = 0; //模拟的时候直接进入pid状态
 
-
+    int flag = 0;
     while (info->stopThread == 0)
     {
         pthread_mutex_lock(&control_cl_module_infoSt->mutex);
@@ -295,12 +294,19 @@ void *PIDControlThread(void *arg)
         //如果放大倍数测量的时候就设置 pid_status == 0 ， 向xmt发送的消息为设定放大值
         if(pipeShareDataSt->pid_status == 0)
         {
-            PIDresult = Controller_Step(before_filter, &deviceInfo, &ctrlParams, &ctrlState, XMT_OFFSET, -1); 
+            PIDresult = Controller_Step(before_filter, &deviceInfo, &ctrlParams, &ctrlState, pipeShareDataSt->amplify_set, -1, 0); 
         }else if (pipeShareDataSt->pid_status == 1)
         {
+            if(flag ==0)
+            {
+                flag = 1;
+                deviceInfo.foundation_zero = control_xmt_module_infoSt->foundation_zero;
+            }
+            deviceInfo.amplify = pipeShareDataSt->amplify_set;
             deviceInfo.target = control_xmt_module_infoSt->target;
+            ctrlParams.G_mm_per_rad = deviceInfo.amplify * deviceInfo.hangLenth / 1000.0;
 
-            PIDresult = Controller_Step(before_filter, &deviceInfo, &pipeShareDataSt->cpid, &ctrlState, XMT_OFFSET, -1); 
+            PIDresult = Controller_Step(before_filter, &deviceInfo, &pipeShareDataSt->cpid, &ctrlState, XMT_OFFSET, -1, 1); 
 
             // pipeShareDataSt->send_pid_error(pipeShareDataSt, pipeShareDataSt->pid.prevError);
             // pipeShareDataSt->send_pid_intergrate(pipeShareDataSt, pipeShareDataSt->pid.integral);

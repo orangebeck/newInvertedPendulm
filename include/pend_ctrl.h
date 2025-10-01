@@ -73,6 +73,7 @@ void Ctrl_Init(CtrlState* s);
      p                 : 控制器参数
      XMT_OFFSET_rad    : 执行机构安装零位偏置（rad），若无则传 0
      positive_nagtive_mode : 正向增益，方向增益  
+     mode: 0为只进行D，其他为正常PID
    输出：
      平台角 α_cmd（rad），已限幅/斜率限幅
 */
@@ -81,7 +82,8 @@ double Controller_Step(double before_filter_mm,
                        const CtrlParams* p,
                        CtrlState* s,
                        double XMT_OFFSET_rad,
-                       double positive_nagtive_mode);
+                       double positive_nagtive_mode,
+                       int mode);
 
 #ifdef __cplusplus
 }

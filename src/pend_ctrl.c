@@ -3,9 +3,14 @@
 #include <float.h>
 #include <stddef.h>
 
+#include "cycleBuffer.h"
+#include "log.h"
+
 #ifndef CLAMP
 #define CLAMP(x, lo, hi) ((x) < (lo) ? (lo) : ((x) > (hi) ? (hi) : (x)))
 #endif
+
+CycleBuffer *cb = NULL;
 
 static inline double lpf_step(double x, double state, double dt, double T)
 {
@@ -60,6 +65,8 @@ void Ctrl_Init(CtrlState* s)
     s->dwell_acc = 0.0;
     s->last_P = s->last_D = s->last_I = s->last_FF = s->last_u_unsat = 0.0;
     s->initialized = false;
+
+    cb = cycle_buffer_init(20 * 5);
 }
 
 double Controller_Step(double before_filter_mm,
@@ -67,7 +74,8 @@ double Controller_Step(double before_filter_mm,
                        const CtrlParams* p,
                        CtrlState* s,
                        double XMT_OFFSET_rad,
-                       double positive_nagtive_mode)
+                       double positive_nagtive_mode,
+                       int mode)
 {
     const double dt = info->dt > 0.0 ? info->dt : 1e-3;
 
@@ -102,7 +110,8 @@ double Controller_Step(double before_filter_mm,
 
     if(change_filter > 8.0)
     {
-        s->dy_f = (p->tau_d > 0.0) ? lpf_step(dy_raw, s->dy_f, dt, 0.0) : dy_raw;
+        // s->dy_f = (p->tau_d > 0.0) ? lpf_step(dy_raw, s->dy_f, dt, 0.0) : dy_raw;
+        s->dy_f = dy_raw;
     }else
     {
         s->dy_f = (p->tau_d > 0.0) ? lpf_step(dy_raw, s->dy_f, dt, p->tau_d) : dy_raw;
@@ -118,29 +127,50 @@ double Controller_Step(double before_filter_mm,
     if(change_filter > 8.0)
     {
         //不对dy进行滤波的情况下可能会导致dy过大，所以需要乘一个系数降低D的幅值
-        D = - positive_nagtive_mode * p->Kd * s->dy_f * 0.5 * 0.1 ;   // rad（抑制速度）
+        D = - positive_nagtive_mode * p->Kd * s->dy_f * 0.9;   // rad（抑制速度）
     }else
     {
         D = - positive_nagtive_mode * p->Kd * s->dy_f;   // rad（抑制速度）
     }
     
-    const double P = p->Kp * eP;          // rad
+
+    double P = p->Kp * eP;          // rad
+
+    if(change_filter > 8.0)
+    {
+        P = P * 20.0  ;
+    }
 
     /* 积分器（只在 TRACK 模式下积累） */
     double I = 0.0;
-    static double sp1 = 0.0, sp2 = 0.0;
+    static double sp1 = 0.0, sp2 = 0.0, sp3 = 0.0;
 
-    s->I_state += p->Ki * eI * dt; 
-    sp1 = lpf_step(s->I_state, sp1, dt, 1.0);
-    sp2 = lpf_step(sp1,  sp2, dt, 1.0);
+    if(change_filter > 8.0)
+    {
+        s->I_state += p->Ki * eI * dt * 7; 
+    }else
+    {
+        s->I_state += p->Ki * eI * dt; 
+    }
+    
+    sp1 = lpf_step(s->I_state, sp1, dt, 1.33);
+    sp2 = lpf_step(sp1,  sp2, dt, 5.0);
+    cycle_buffer_push(cb,sp2);
+    // I = cycle_buffer_avg(cb);
     I = sp2;
+
     // if (s->mode == CTRL_TRACK ) {
     //     s->I_state += p->Ki * eI * dt;   // rad
     //     I = s->I_state;
     // }
 
     /* 7) 未饱和输出 */    
-    const double u_unsat = alpha_ff + P + D + I ;
+    double u_unsat = alpha_ff + P + D + I ;
+    if(mode == 0)
+    {
+        u_unsat = XMT_OFFSET_rad + D;
+    }
+    
 
     /* 8) 限幅 + 斜率限幅 */
     double alpha_cmd = CLAMP(u_unsat, p->alpha_min, p->alpha_max);

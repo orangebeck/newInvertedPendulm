@@ -3,9 +3,9 @@
 
 int  stopThreadFlag = 0;
 
-char *send_path = "/home/zhouweijie/pipeToQT";
-char *receive_path = "/home/zhouweijie/pipeToApp";
-char *debug_path = "/home/zhouweijie/Debug";
+char *send_path = "./pipeToQT";
+char *receive_path = "./pipeToApp";
+char *debug_path = "./Debug";
 
 motor motorList[] = {
     {
@@ -169,7 +169,18 @@ int pipeControl(char *infoList[], pipeShareData *pipeShareDataSt)
         for (int i = 1; i < 2; i += 2)
         {
             pthread_mutex_lock(&pipeShareDataSt->stop_mutex);
-            pipeShareDataSt->pid_status = 1;
+            if (strcmp(infoList[i], "ON") == 0)
+            {
+                pipeShareDataSt->pid_status = 1;
+                LOG(LOG_INFO, "%s PID ON\n", __func__, atof(infoList[i + 1]));
+            }
+
+            if (strcmp(infoList[i], "OFF") == 0)
+            {
+                pipeShareDataSt->pid_status = 0;
+                LOG(LOG_INFO, "%s PID OFF\n", __func__, atof(infoList[i + 1]));
+            }
+            
             if (strcmp(infoList[i], "P") == 0)
             {
                 pipeShareDataSt->cpid.Kp = atof(infoList[i + 1]);

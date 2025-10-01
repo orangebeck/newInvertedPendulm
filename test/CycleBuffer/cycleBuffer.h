@@ -1,25 +1,42 @@
 #ifndef CYCLEBUFFER_H
 #define CYCLEBUFFER_H
 
-#include <stdint.h>
-#include <string.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <limits.h>
+#include <stdbool.h>
 
 typedef struct {
-    int size;   // buffer size
-    int head;   // index of the first element in the buffer
-    int tail;   // index of the next available slot in the buffer
-    int count;  // number of elements in the buffer
-    double sum;  // sum of all elements in the buffer
-    double buffer[];    // the buffer itself
-} cycleBuffer;
+    double *buffer;     // 缓冲区指针
+    int capacity;    // 缓冲区总容量
+    int head;        // 头部索引（最新数据位置）
+    int tail;        // 尾部索引（最旧数据位置）
+    int count;       // 当前有效数据量
+    double sum;         // 数据总和（用于快速计算平均值）
+    double min;         // 当前最小值
+    double max;         // 当前最大值
+} CycleBuffer;
 
-cycleBuffer* initCycleBuffer(int size);
+CycleBuffer* cycle_buffer_init(double capacity);
 
-double putCycleBuffer(cycleBuffer *cb, double data);    // add an element to the buffer
+void cycle_buffer_free(CycleBuffer *cb);
 
-void clearCycleBuffer(cycleBuffer *cb);   // clear the buffer
+bool cycle_buffer_resize(CycleBuffer *cb, int new_capacity);
 
-void destoryCycleBuffer(cycleBuffer *cb);   // delete the buffer
+void cycle_buffer_push(CycleBuffer *cb, double value);
+
+double cycle_buffer_pop(CycleBuffer *cb);
+
+int cycle_buffer_count(const CycleBuffer *cb) ;
+
+double cycle_buffer_avg(const CycleBuffer *cb);
+
+double cycle_buffer_min(const CycleBuffer *cb);
+
+double cycle_buffer_max(const CycleBuffer *cb);
+
+void cycle_buffer_print(const CycleBuffer *cb);
+
+
 
 #endif
