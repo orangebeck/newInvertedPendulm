@@ -242,7 +242,7 @@ int pipeControl(char *infoList[], pipeShareData *pipeShareDataSt)
             {
                 pthread_mutex_lock(&control_xmt_module_infoSt->mutex);
                 control_xmt_module_infoSt->amplify = atof(infoList[i + 1]);
-                LOG(LOG_INFO, "%scontrol_xmt_module_infoSt->amplify  = %f\n", __func__, control_xmt_module_infoSt->amplify );
+                LOG(LOG_INFO, "%s control_xmt_module_infoSt->amplify  = %f\n", __func__, control_xmt_module_infoSt->amplify );
                 pthread_mutex_unlock(&control_xmt_module_infoSt->mutex);
             }
            

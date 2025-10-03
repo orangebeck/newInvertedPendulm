@@ -387,7 +387,7 @@ void *PIDControlThread(void *arg)
                 flag = 1;
                 deviceInfo.foundation_zero = control_xmt_module_infoSt->foundation_zero;
             }
-            deviceInfo.amplify = pipeShareDataSt->amplify_set;
+            deviceInfo.amplify = control_xmt_module_infoSt->amplify;
             deviceInfo.target = control_xmt_module_infoSt->target;
             ctrlParams.G_mm_per_rad = deviceInfo.amplify * deviceInfo.hangLenth / 1000.0;
 
