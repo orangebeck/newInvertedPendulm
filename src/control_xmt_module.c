@@ -178,10 +178,92 @@ FILE* createSaveFile()
         perror("Error opening file");
         return NULL;
     }
-    fprintf(fp, "Time,Target,Fundation_Zero,dy,CL,xmt,P,I,D,ff,sp2\n");
+    fprintf(fp, "Time,Target,Fundation_Zero,dy,CL,xmt,P,I,D,ff,sp2,vibration\n");
 
 
     return fp;
+}
+
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
+#define SERVER_IP "192.168.1.250"
+#define SERVER_PORT 6000
+#define BUFFER_SIZE 1500
+
+int  connect_vibration()
+{
+    struct sockaddr_in server_addr;
+    ssize_t bytes_sent, bytes_received;
+
+    // 创建TCP socket
+    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0) {
+        perror("socket creation failed");
+        exit(EXIT_FAILURE);
+    }
+
+    // 设置服务器地址
+    memset(&server_addr, 0, sizeof(server_addr));
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(SERVER_PORT);
+    
+    if (inet_pton(AF_INET, SERVER_IP, &server_addr.sin_addr) <= 0) {
+        perror("invalid address");
+        close(sockfd);
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Connecting to %s:%d...\n", SERVER_IP, SERVER_PORT);
+
+    // 连接到服务器
+    if (connect(sockfd, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
+        perror("connection failed");
+        close(sockfd);
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Connected successfully!\n");
+    return sockfd;
+}
+
+// 要发送的报文数据
+unsigned char send_data_ping[] = {
+    0xAA, 0x55, 0x08, 0xD1, 0xA3, 0x01, 0x55, 0xAA
+};
+
+unsigned char send_data_sample[] = {
+    0xAA, 0x55, 0x0C, 0x15, 0xA1, 0x01, 0x01, 0x00, 0x00, 0x00, 0x55, 0xAA
+};
+
+unsigned char send_data_sample_rate[] = {
+    0xAA, 0x55, 0x09, 0xD0, 0xA3, 0x01, 0x01, 0x55, 0xAA
+};
+
+void send_data(int sockfd, unsigned char* data, int size)
+{
+    ssize_t   bytes_sent = send(sockfd, data, size, 0);
+    if (bytes_sent < 0) {
+        perror("send failed");
+        close(sockfd);
+        exit(EXIT_FAILURE);
+    }
+}
+
+void receive_data(int sockfd, unsigned char* buffer, int size)
+{
+        // 接收返回报文
+    ssize_t bytes_received = recv(sockfd, buffer, size, 0);
+    if (bytes_received < 0) {
+        perror("receive failed");
+        close(sockfd);
+        exit(EXIT_FAILURE);
+    }
+
+    if (bytes_received == 0) {
+        printf("Connection closed by server\n");
+    }
 }
 
 void *PSOControlThread(void *arg)
@@ -265,6 +347,9 @@ void *PIDControlThread(void *arg)
 
     double tmp =0;
 
+    unsigned char buffer[BUFFER_SIZE];
+    int sockfd = connect_vibration();
+    int index = 16;
 
     //临时实验 前馈+PID
     DeviceInfo deviceInfo = {
@@ -308,9 +393,9 @@ void *PIDControlThread(void *arg)
 
             PIDresult = Controller_Step(before_filter, &deviceInfo, &pipeShareDataSt->cpid, &ctrlState, XMT_OFFSET, -1, 1); 
 
-            // pipeShareDataSt->send_pid_error(pipeShareDataSt, pipeShareDataSt->pid.prevError);
-            // pipeShareDataSt->send_pid_intergrate(pipeShareDataSt, pipeShareDataSt->pid.integral);
-            // pipeShareDataSt->send_xmt_value(pipeShareDataSt, PIDresult);
+            pipeShareDataSt->send_pid_error(pipeShareDataSt, pipeShareDataSt->pid.prevError);
+            pipeShareDataSt->send_pid_intergrate(pipeShareDataSt, pipeShareDataSt->pid.integral);
+            pipeShareDataSt->send_xmt_value(pipeShareDataSt, PIDresult);
         }
         #ifndef DEBUG_MODE
         xmt_numtodata(xmt_data_ins, 0, 0, PIDresult);
@@ -320,7 +405,19 @@ void *PIDControlThread(void *arg)
 
         pipeShareDataSt->send_xmt_value(pipeShareDataSt, PIDresult);
 
-        fprintf(fp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf, %lf\n",   (double)count * SAMPLETIME/1000.0, 
+    send_data(sockfd, send_data_sample, sizeof(send_data_sample));
+    receive_data(sockfd, buffer, BUFFER_SIZE);
+    double sum = 0;
+    for(int i = 0; i < 480; i++)
+    {
+        // 推荐的简洁写法
+        int tmp = (buffer[index + i * 3] << 16) | (buffer[index + 1 + i * 3] << 8) |  buffer[index + 2 + i * 3];
+        double value = tmp & 0x800000 ? (double)(0x800000 -tmp) / 0x800000 : (double)tmp / 0x800000;
+        sum += value;
+    }
+    sum = sum / 480.0 * 0.04;
+
+        fprintf(fp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf\n",   (double)count * SAMPLETIME/1000.0, 
                                                                 control_xmt_module_infoSt->target, 
                                                                 deviceInfo.foundation_zero,
                                                                 ctrlState.dy_f,
@@ -330,7 +427,8 @@ void *PIDControlThread(void *arg)
                                                                 ctrlState.last_I, 
                                                                 ctrlState.last_D, 
                                                                 ctrlState.last_FF,
-                                                                ctrlState.sp2);
+                                                                ctrlState.sp2,
+                                                                sum);
         
         if (count % 100000 == 0 && count != 0)
         {
