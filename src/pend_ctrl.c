@@ -105,7 +105,7 @@ double Controller_Step(double before_filter_mm,
     const double dy_raw = (before_filter_mm - s->y_prev) / dt;
     s->y_prev = before_filter_mm;
     static double change_filter = 0;
-    bool change_filter_calm = (fabs(eI) < 0.01);
+    bool change_filter_calm = (fabs(eI) < 0.001 * info->amplify);
     change_filter = change_filter_calm ? (change_filter + dt) : 0.0;
 
     if(change_filter > 8.0)
@@ -127,7 +127,7 @@ double Controller_Step(double before_filter_mm,
     if(change_filter > 8.0)
     {
         //不对dy进行滤波的情况下可能会导致dy过大，所以需要乘一个系数降低D的幅值
-        D = - positive_nagtive_mode * p->Kd * s->dy_f * 0.9;   // rad（抑制速度）
+        D = - positive_nagtive_mode * p->Kd * s->dy_f * 1.4;   // rad（抑制速度）
     }else
     {
         D = - positive_nagtive_mode * p->Kd * s->dy_f;   // rad（抑制速度）
@@ -138,7 +138,7 @@ double Controller_Step(double before_filter_mm,
 
     if(change_filter > 8.0)
     {
-        P = P * 20.0  ;
+        P = P * 17.0  ;
     }
 
     /* 积分器（只在 TRACK 模式下积累） */
@@ -147,7 +147,7 @@ double Controller_Step(double before_filter_mm,
 
     if(change_filter > 8.0)
     {
-        s->I_state += p->Ki * eI * dt * 7; 
+        s->I_state += p->Ki * eI * dt * 10; 
     }else
     {
         s->I_state += p->Ki * eI * dt; 
