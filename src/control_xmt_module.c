@@ -393,8 +393,8 @@ void *PIDControlThread(void *arg)
 
             PIDresult = Controller_Step(before_filter, &deviceInfo, &pipeShareDataSt->cpid, &ctrlState, XMT_OFFSET, -1, 1); 
 
-            pipeShareDataSt->send_pid_error(pipeShareDataSt, pipeShareDataSt->pid.prevError);
-            pipeShareDataSt->send_pid_intergrate(pipeShareDataSt, pipeShareDataSt->pid.integral);
+            pipeShareDataSt->send_pid_error(pipeShareDataSt, ctrlState.last_P);
+            pipeShareDataSt->send_pid_intergrate(pipeShareDataSt, ctrlState.last_I);
             pipeShareDataSt->send_xmt_value(pipeShareDataSt, PIDresult);
         }
         #ifndef DEBUG_MODE
@@ -417,18 +417,18 @@ void *PIDControlThread(void *arg)
     }
     sum = sum / 480.0 * 0.04;
 
-        fprintf(fp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf\n",   (double)count * SAMPLETIME/1000.0, 
-                                                                control_xmt_module_infoSt->target, 
-                                                                deviceInfo.foundation_zero,
-                                                                ctrlState.dy_f,
-                                                                before_filter, 
-                                                                PIDresult, 
-                                                                ctrlState.last_P, 
-                                                                ctrlState.last_I, 
-                                                                ctrlState.last_D, 
-                                                                ctrlState.last_FF,
-                                                                ctrlState.sp2,
-                                                                sum);
+    fprintf(fp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf\n",   (double)count * SAMPLETIME/1000.0, 
+                                                            control_xmt_module_infoSt->target, 
+                                                            deviceInfo.foundation_zero,
+                                                            ctrlState.dy_f,
+                                                            before_filter, 
+                                                            PIDresult, 
+                                                            ctrlState.last_P, 
+                                                            ctrlState.last_I, 
+                                                            ctrlState.last_D, 
+                                                            ctrlState.last_FF,
+                                                            ctrlState.sp2,
+                                                            sum);
         
         if (count % 100000 == 0 && count != 0)
         {
