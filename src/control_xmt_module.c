@@ -348,7 +348,9 @@ void *PIDControlThread(void *arg)
     double tmp =0;
 
     unsigned char buffer[BUFFER_SIZE];
+    #ifndef DEBUG_MODE
     int sockfd = connect_vibration();
+    #endif
     int index = 16;
 
     //临时实验 前馈+PID
@@ -389,7 +391,7 @@ void *PIDControlThread(void *arg)
             }
             deviceInfo.amplify = control_xmt_module_infoSt->amplify;
             deviceInfo.target = control_xmt_module_infoSt->target;
-            ctrlParams.G_mm_per_rad = deviceInfo.amplify * deviceInfo.hangLenth / 1000.0;
+            pipeShareDataSt->cpid.G_mm_per_rad = deviceInfo.amplify * deviceInfo.hangLenth / 1000.0;
 
             PIDresult = Controller_Step(before_filter, &deviceInfo, &pipeShareDataSt->cpid, &ctrlState, XMT_OFFSET, -1, 1); 
 
@@ -404,9 +406,10 @@ void *PIDControlThread(void *arg)
         #endif
 
         pipeShareDataSt->send_xmt_value(pipeShareDataSt, PIDresult);
-
+    #ifndef DEBUG_MODE
     send_data(sockfd, send_data_sample, sizeof(send_data_sample));
     receive_data(sockfd, buffer, BUFFER_SIZE);
+    #endif
     double sum = 0;
     for(int i = 0; i < 480; i++)
     {
