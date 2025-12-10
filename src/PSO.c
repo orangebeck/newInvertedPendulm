@@ -31,7 +31,7 @@ void restorePID(PSO *p)
 
 double fitness(PSO *p, int i, double target, double ITAETime, double PIDSamplingTime)
 {
-    double distance = 0.0;
+    double distance = 0.1;
     double time_ = 0;
     backupPID(p, NULL);
     // p->pid->integral = 0;
@@ -42,7 +42,7 @@ double fitness(PSO *p, int i, double target, double ITAETime, double PIDSampling
     double ret = 0;
     double ITAERet = 0;
     pthread_mutex_lock(&control_xmt_module_infoSt->mutex);
-    control_xmt_module_infoSt->foundation_zero = control_xmt_module_infoSt->target + distance; // 暂定增加100微米
+    control_xmt_module_infoSt->target = control_xmt_module_infoSt->target + distance; // 暂定增加100微米
     pthread_mutex_unlock(&control_xmt_module_infoSt->mutex);
     for (time_ = 0; time_ < (ITAETime / PIDSamplingTime); time_++)
     {
@@ -58,12 +58,12 @@ double fitness(PSO *p, int i, double target, double ITAETime, double PIDSampling
         //         break;
         //     }
         // }
-            ITAERet += ITAE(time_, control_xmt_module_infoSt->foundation_zero, ret, PIDSamplingTime);
+            ITAERet += ITAE(time_, control_xmt_module_infoSt->target, ret, PIDSamplingTime);
     }
     pthread_mutex_lock(&control_xmt_module_infoSt->mutex);
-    control_xmt_module_infoSt->foundation_zero = control_xmt_module_infoSt->foundation_zero - distance; // 暂定增加100微米
+    control_xmt_module_infoSt->target = control_xmt_module_infoSt->target - distance; // 暂定增加100微米
     pthread_mutex_unlock(&control_xmt_module_infoSt->mutex);
-    if (fabs(ret - (control_xmt_module_infoSt->foundation_zero + distance)) > 0.01)
+    if (fabs(ret - (control_xmt_module_infoSt->target + distance)) > 0.1)
     {
         ITAERet = DBL_MAX; // 如果没有稳定在目标值附近，则认为适应度为无穷大
         LOG(LOG_INFO, "[PSO] fitness: Iterations = %d, ITAE = INF,  Kp = %f, Ki = %f, Kd = %f\n",
@@ -82,7 +82,7 @@ double fitness(PSO *p, int i, double target, double ITAETime, double PIDSampling
                p->particles[i].position[2]);
     }
 
-    LOG(LOG_INFO, "[PSO] [check] target = %f, cur = %f, minus = %f\n", control_xmt_module_infoSt->foundation_zero + distance, ret, fabs(ret - (control_xmt_module_infoSt->foundation_zero + distance)));
+    LOG(LOG_INFO, "[PSO] [check] target = %f, cur = %f, minus = %f\n", control_xmt_module_infoSt->target + distance, ret, fabs(ret - (control_xmt_module_infoSt->target + distance)));
     restorePID(p);
 
     // 等待恢复到最开始的基准
@@ -90,7 +90,7 @@ double fitness(PSO *p, int i, double target, double ITAETime, double PIDSampling
     time_t start_time = 0;
     while (1)
     {
-        double diff = fabs(control_cl_module_infoSt->clData - control_xmt_module_infoSt->foundation_zero);
+        double diff = fabs(control_cl_module_infoSt->clData - control_xmt_module_infoSt->target);
         if (diff <= 0.005)
         {
             if (start_time == 0)
