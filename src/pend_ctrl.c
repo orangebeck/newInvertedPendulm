@@ -33,8 +33,8 @@ void Ctrl_GetDefaultParams(double dt, CtrlParams* p)
 
     /* 滤波：20Hz 下建议慢一些，防激振 */
     p->tau_d = 0.10;  // s
-    p->Tsp1  = 1.0;   // s
-    p->Tsp2  = 1.0;   // s
+    p->Tsp1  = 0.0;   // s
+    p->Tsp2  = 0.0;   // s
 
     /* 物理限制与抗饱和 */
     p->alpha_min  = 0.0;        // 若允许负方向，改为 -0.3e-3
