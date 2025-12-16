@@ -1,5 +1,13 @@
 #include "control_cl_module.h"
 
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
+#define SERVER_IP "192.168.3.80"
+#define SERVER_PORT 24685
+#define BUFFER_SIZE 1024
+
 control_cl_module_info *initControlClModule()
 {
     control_cl_module_info *info = (control_cl_module_info *)calloc(1, sizeof(control_cl_module_info));
@@ -60,6 +68,70 @@ int clConfigTty(int fd, struct termios *termios)
     }
 }
 
+int  connect_CL_Socket()
+{
+    struct sockaddr_in server_addr;
+    ssize_t bytes_sent, bytes_received;
+
+    // 创建TCP socket
+    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0) {
+        perror("socket creation failed");
+        exit(EXIT_FAILURE);
+    }
+
+    // 设置服务器地址
+    memset(&server_addr, 0, sizeof(server_addr));
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(SERVER_PORT);
+    
+    if (inet_pton(AF_INET, SERVER_IP, &server_addr.sin_addr) <= 0) {
+        perror("invalid address");
+        close(sockfd);
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Connecting to %s:%d...\n", SERVER_IP, SERVER_PORT);
+
+    // 连接到服务器
+    if (connect(sockfd, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
+        perror("connection failed");
+        close(sockfd);
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Connected successfully!\n");
+    return sockfd;
+}
+
+void send_data(int sockfd, unsigned char* data, int size)
+{
+    ssize_t   bytes_sent = send(sockfd, data, size, 0);
+    if (bytes_sent < 0) {
+        perror("send failed");
+        close(sockfd);
+        exit(EXIT_FAILURE);
+    }
+}
+
+int receive_data(int sockfd, unsigned char* buffer, int size)
+{
+        // 接收返回报文
+    // ssize_t bytes_received = recv(sockfd, buffer, size, 0);
+    int bytes_received_int = (int)recv(sockfd, buffer, size, 0);
+    if (bytes_received_int < 0) {
+        perror("receive failed");
+        close(sockfd);
+        exit(EXIT_FAILURE);
+    }
+
+    if (bytes_received_int == 0) {
+        printf("Connection closed by server\n");
+    }
+
+    return bytes_received_int;
+}
+
 int fd_init(char *path)
 {
     int fd;
@@ -71,28 +143,29 @@ int fd_init(char *path)
     return fd;
 }
 
+
 void CL_init(int fd)
 {
     int res;
     char buf[1024];
     res = CL_enter_measurement_mode(buf);
-    write(fd, buf, res);
-    res = read(fd, buf, 1024);
+    send_data(fd, buf, res);
+    res = receive_data(fd, buf, 1024);
     CL_ret_data(buf);
 
     res = CL_stop_data_storage(buf);
-    write(fd, buf, res);
-    res = read(fd, buf, 1024);
+    send_data(fd, buf, res);
+    res = receive_data(fd, buf, 1024);
     CL_ret_data(buf);
 
     res = CL_init_data_storage(buf);
-    write(fd, buf, res);
-    res = read(fd, buf, 1024);
+    send_data(fd, buf, res);
+    res = receive_data(fd, buf, 1024);
     CL_ret_data(buf);
 
     res = CL_start_data_storage(buf);
-    write(fd, buf, res);
-    res = read(fd, buf, 1024);
+    send_data(fd, buf, res);
+    res = receive_data(fd, buf, 1024);
     CL_ret_data(buf);
 }
 
@@ -107,8 +180,8 @@ void timer_thread(int signo, siginfo_t *sigInfo, void *context)
 
         #ifndef DEBUG_MODE
             res = CL_output_measure_value(buf, value, out1);
-            write(info->fd, buf, res);
-            res = read(info->fd, buf, 1024);
+            send_data(info->fd, buf, res);
+            res = receive_data(info->fd, buf, 1024);
             CL_ret_data(buf);
         #endif
 
@@ -135,8 +208,8 @@ void stopThread(int fd)
     int res;
     char buf[1024];
     res = CL_stop_data_storage(buf);
-    write(fd, buf, res);
-    res = read(fd, buf, 1024);
+    send_data(fd, buf, res);
+    res = receive_data(fd, buf, 1024);
     CL_ret_data(buf);
     LOG(LOG_INFO, "Close CL thread\n");
     close(fd);
@@ -203,9 +276,10 @@ void *clReceiveInputThread(void *arg)
     struct termios termios_tty;
 
     #ifndef DEBUG_MODE
-    char *clTtyPath = "/dev/ttySTM1";
-    info->fd = fd_init(clTtyPath);
-    clConfigTty(info->fd, &termios_tty);
+    // char *clTtyPath = "/dev/ttySTM1";
+    // info->fd = fd_init(clTtyPath);
+    // clConfigTty(info->fd, &termios_tty);
+    info->fd=connect_CL_Socket();
     CL_init(info->fd);
     #endif
     

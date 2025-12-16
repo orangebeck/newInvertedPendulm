@@ -241,30 +241,30 @@ unsigned char send_data_sample_rate[] = {
     0xAA, 0x55, 0x09, 0xD0, 0xA3, 0x01, 0x01, 0x55, 0xAA
 };
 
-void send_data(int sockfd, unsigned char* data, int size)
-{
-    ssize_t   bytes_sent = send(sockfd, data, size, 0);
-    if (bytes_sent < 0) {
-        perror("send failed");
-        close(sockfd);
-        exit(EXIT_FAILURE);
-    }
-}
+// void send_data(int sockfd, unsigned char* data, int size)
+// {
+//     ssize_t   bytes_sent = send(sockfd, data, size, 0);
+//     if (bytes_sent < 0) {
+//         perror("send failed");
+//         close(sockfd);
+//         exit(EXIT_FAILURE);
+//     }
+// }
 
-void receive_data(int sockfd, unsigned char* buffer, int size)
-{
-        // 接收返回报文
-    ssize_t bytes_received = recv(sockfd, buffer, size, 0);
-    if (bytes_received < 0) {
-        perror("receive failed");
-        close(sockfd);
-        exit(EXIT_FAILURE);
-    }
+// void receive_data(int sockfd, unsigned char* buffer, int size)
+// {
+//         // 接收返回报文
+//     ssize_t bytes_received = recv(sockfd, buffer, size, 0);
+//     if (bytes_received < 0) {
+//         perror("receive failed");
+//         close(sockfd);
+//         exit(EXIT_FAILURE);
+//     }
 
-    if (bytes_received == 0) {
-        printf("Connection closed by server\n");
-    }
-}
+//     if (bytes_received == 0) {
+//         printf("Connection closed by server\n");
+//     }
+// }
 
 void *PSOControlThread(void *arg)
 {   
@@ -349,7 +349,7 @@ void *PIDControlThread(void *arg)
 
     unsigned char buffer[BUFFER_SIZE];
     #ifndef DEBUG_MODE
-    int sockfd = connect_vibration();
+    // int sockfd = connect_vibration();
     #endif
     int index = 16;
 
@@ -407,8 +407,8 @@ void *PIDControlThread(void *arg)
 
         pipeShareDataSt->send_xmt_value(pipeShareDataSt, PIDresult);
     #ifndef DEBUG_MODE
-    send_data(sockfd, send_data_sample, sizeof(send_data_sample));
-    receive_data(sockfd, buffer, BUFFER_SIZE);
+    // send_data(sockfd, send_data_sample, sizeof(send_data_sample));
+    // receive_data(sockfd, buffer, BUFFER_SIZE);
     #endif
     double sum = 0;
     for(int i = 0; i < 480; i++)
