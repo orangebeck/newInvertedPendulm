@@ -1,6 +1,73 @@
 #include "control_xmt_module.h"
 
 
+char path_STM1[] = "/dev/ttySTM1";
+char buf_STM1[1024] = "tty send test.\n";
+const char UT_REGISTERS_TAB[] = { 0x02, 0x43, 0xB0, 0x01,0x03, 0xF2};
+
+void config_tty_PSD(int fd, struct termios *termios)
+{
+    // 清空串口接收缓冲区
+    tcflush(fd, TCIOFLUSH);
+    // 获取串口参数opt
+    tcgetattr(fd, termios);
+
+    // 设置串口输出波特率
+    cfsetospeed(termios, B115200);
+    // 设置串口输入波特率
+    cfsetispeed(termios, B115200);
+    
+    // 设置数据位数
+    termios->c_cflag &= ~CSIZE;
+    termios->c_cflag |= CS8;
+    // 校验位
+    termios->c_cflag &= ~PARENB;
+    termios->c_iflag &= ~INPCK;
+    
+    // 禁用软件流控制
+    termios->c_iflag &= ~(IXON | IXOFF | IXANY | PARMRK);
+    termios->c_iflag &= ~ICRNL; // 禁用回车符转换
+    termios->c_iflag &= ~INLCR; // 禁止NL转CR
+    termios->c_iflag &= ~IGNCR; // 禁止忽略CR
+    
+    // 设置停止位
+    termios->c_cflag &= ~CSTOPB;
+
+    // 重要：禁用所有信号处理和特殊字符处理
+    termios->c_lflag &= ~(ISIG | ECHO | ICANON | IEXTEN);
+    
+    // 重要：禁用所有控制字符的特殊处理
+    termios->c_cc[VMIN] = 1;    // 最小读取字符数
+    termios->c_cc[VTIME] = 0;   // 读取超时（无限制）
+    
+    // 禁用中断字符的特殊处理（0x03）
+    termios->c_cc[VINTR] = _POSIX_VDISABLE;
+    // 禁用其他可能影响的控制字符
+    termios->c_cc[VQUIT] = _POSIX_VDISABLE;
+    termios->c_cc[VSUSP] = _POSIX_VDISABLE;
+    termios->c_cc[VSTART] = _POSIX_VDISABLE;
+    termios->c_cc[VSTOP] = _POSIX_VDISABLE;
+    termios->c_cc[VEOF] = _POSIX_VDISABLE;
+    termios->c_cc[VEOL] = _POSIX_VDISABLE;
+
+    // 禁用输出处理
+    termios->c_oflag &= ~OPOST;
+    termios->c_oflag &= ~ONLCR;  // 禁止输出时换行转回车换行
+
+    // 使能接收
+    termios->c_cflag |= CREAD;
+    
+    if (tcsetattr(fd, TCSANOW, termios) < 0)
+    {
+        LOG(LOG_INFO, "PSD fail to config tty\n");
+        exit(EXIT_FAILURE);
+    }
+    else
+    {
+       LOG(LOG_INFO, "PSD device set to 115200bps,8N1 (raw mode)\n");
+    }
+}
+
 void config_tty(int fd, struct termios *termios)
 {
     // 清空串口接收缓冲区
@@ -178,7 +245,7 @@ FILE* createSaveFile()
         perror("Error opening file");
         return NULL;
     }
-    fprintf(fp, "Time,Target,Fundation_Zero,dy,CL,xmt,P,I,D,ff,sp2,vibration\n");
+    fprintf(fp, "Time,Target,Fundation_Zero,dy,CL,xmt,P,I,D,ff,sp2,PSD\n");
 
 
     return fp;
@@ -324,6 +391,10 @@ void *PIDControlThread(void *arg)
         info->fd = xmtfd_init(default_path);
         config_tty(info->fd, &termios_tty);
         res = config_xmt(info->fd, buf, &xmt_data_ins);
+    
+        int fd_PSD =  open(path_STM1, O_RDWR);
+        config_tty_PSD(fd_PSD, &termios_tty);
+        int number_PSD = 0;
     #endif
 
     if (res < 0) goto configErr;
@@ -406,19 +477,41 @@ void *PIDControlThread(void *arg)
         #endif
 
         pipeShareDataSt->send_xmt_value(pipeShareDataSt, PIDresult);
+        
+        write(fd_PSD, UT_REGISTERS_TAB, 6);
+        // memset(buf_STM1,0,1024);
+        res = read(fd_PSD, buf_STM1, 1024);
+        if (res > 0) {
+            
+            number_PSD = (buf_STM1[2] <<8 )|buf_STM1[3];
+            if(number_PSD > 0xEC78)
+            {
+                number_PSD -= 0x10000;
+            }
+            if(number_PSD > 6000 )
+            {
+                number_PSD = 6000;
+            }else if (number_PSD < -60000)
+            {
+                number_PSD=-6000;
+            }
+            // LOG(LOG_DEBUG, "PSD = %lf\n",(double)number_PSD / 1000.0);
+        }
+
+    //振动测量代码
     #ifndef DEBUG_MODE
     // send_data(sockfd, send_data_sample, sizeof(send_data_sample));
     // receive_data(sockfd, buffer, BUFFER_SIZE);
     #endif
-    double sum = 0;
-    for(int i = 0; i < 480; i++)
-    {
-        // 推荐的简洁写法
-        int tmp = (buffer[index + i * 3] << 16) | (buffer[index + 1 + i * 3] << 8) |  buffer[index + 2 + i * 3];
-        double value = tmp & 0x800000 ? (double)(0x800000 -tmp) / 0x800000 : (double)tmp / 0x800000;
-        sum += value;
-    }
-    sum = sum / 480.0 * 0.04;
+    // double sum = 0;
+    // for(int i = 0; i < 480; i++)
+    // {
+    //     // 推荐的简洁写法
+    //     int tmp = (buffer[index + i * 3] << 16) | (buffer[index + 1 + i * 3] << 8) |  buffer[index + 2 + i * 3];
+    //     double value = tmp & 0x800000 ? (double)(0x800000 -tmp) / 0x800000 : (double)tmp / 0x800000;
+    //     sum += value;
+    // }
+    // sum = sum / 480.0 * 0.04;
 
     fprintf(fp, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf\n",   (double)count * SAMPLETIME/1000.0, 
                                                             control_xmt_module_infoSt->target, 
@@ -431,7 +524,7 @@ void *PIDControlThread(void *arg)
                                                             ctrlState.last_D, 
                                                             ctrlState.last_FF,
                                                             ctrlState.sp2,
-                                                            sum);
+                                                            (double)number_PSD / 1000.0);
         
         if (count % 100000 == 0 && count != 0)
         {
